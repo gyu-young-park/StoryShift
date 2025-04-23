@@ -4,11 +4,12 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/gyu-young-park/VelogStoryShift/internal/config"
 	"github.com/gyu-young-park/VelogStoryShift/pkg/velog"
 )
 
 func main() {
-	velogAPI := velog.NewVelogAPI("https://v2.velog.io/graphql", "chappi")
+	velogAPI := velog.NewVelogAPI(config.Manager.VelogConfig.URL, "chappi")
 	resp, err := velogAPI.GetPost("4023bf7e-df1c-4288-9e4f-a37983406912")
 	if err != nil {
 		fmt.Printf("failed to get post content of velog: %s", err)
