@@ -19,24 +19,36 @@ func NewVelogAPI(apiUrl string, username string) VelogAPI {
 	}
 }
 
-func (v VelogAPI) GetPost(postId string) (VelogAPIGetPostRespModel, error) {
-	reqBody := getLastPostHistoryRawGraphQL(postId) // "4023bf7e-df1c-4288-9e4f-a37983406912"
+func (v VelogAPI) GetPost(urlSlug string) (VelogPost, error) {
+	reqBody := graphQLQuery.readPost(v.Username, urlSlug)
 
 	resp, err := httpclient.Post(httpclient.PostRequestParam{
-		URL:         v.VelogAPIURL, // "https://v2.velog.io/graphql"
+		URL:         v.VelogAPIURL,
 		Body:        bytes.NewBuffer([]byte(reqBody)),
 		ContentType: "application/json",
 	})
 
-	var velogAPIGetPostRespModel VelogAPIGetPostRespModel
+	var model readPostModel
 	if err != nil {
-		return velogAPIGetPostRespModel, err
+		return VelogPost{}, err
 	}
 
-	err = json.Unmarshal(resp, &velogAPIGetPostRespModel)
+	err = json.Unmarshal(resp, &model)
 	if err != nil {
-		return velogAPIGetPostRespModel, err
+		return VelogPost{}, err
 	}
 
-	return velogAPIGetPostRespModel, nil
+	post := VelogPost{
+		ID:        model.Data.Post.ID,
+		Title:     model.Data.Post.Title,
+		Body:      model.Data.Post.Body,
+		CreatedAt: model.Data.Post.ReleasedAt,
+		UpdatedAt: model.Data.Post.UpdatedAt,
+	}
+
+	return post, nil
 }
+
+// func (v *VelogAPI) GetAllPost(cursor string) []VelogPost {
+
+// }

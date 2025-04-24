@@ -1,450 +1,758 @@
-# chapter 3. eBPF Program 해부
-이전에는 `bcc`를 사용해서 eBPF 사용해보았는데, 이제는 c언어를 직접 사용하여 `bcc`가 어떻게 동작했는 지 알아보도록 하자.
+# Aggregation
+aggregation(집계)는 elasticsearch의 꽃이다. search도 aggregation을 하기 위함과 다를바 없다. 
 
-c또는 Rust source code는 eBPF bytecode로 컴파일된다. 이 eBPF bytecode는 JIT compile되거나 interpreted되어 native machine code 명령어로 변환된다. 다음의 그림을 참고하자.  
-![](https://velog.velcdn.com/images/chappi/post/42f30731-7b86-4713-a429-3acc63d288a1/image.png)
+먼저 kibana sample data를 적재해보도록 하자. kibana homepage에 가서 `Try sample data` -> `Sample eCommerce orders`를 누르면 `kibana_sample_data_ecommerce` index가 적재된다.
 
-eBPF program은 eBPF bytecode 명령어 셋으로 assembly로 programming할 수 있지만, 사람이 읽을 수 있고, programming하기 좋은 c나 rust와 같은 언어로 먼저 작성하고 bytecode로 만들어 실행하는 것이 좋다. 
-
-결과적으로 eBPF bytecode는 kernel의 eBPF virtual machine안에서 실행이 되는 것이다. 
-
-## 1. eBPF Virtual Machine
-eBPF virtual machine은 다른 virtual machine과 같이 computer의 software 구현체이다. virtual machine은 eBPF bytecode 명령어 형식으로 program을 받아들고 bytecode를 CPU에 해당하는 native machine 명령어로 변환해준다. 
-
-eBPF 초기에 bytecode 명령어들은 kernel안에서 interpreted되었다. 즉, eBPF program이 실행될 때마다 kernel은 명령어를 평가하고 bytecode를 machine code로 변환해 실행했다는 것이다. 이후에 eBPF interpreter의 성능 이슈와 취약성을 피하기 위해 interpreter를 JIT compilation으로 변경하였다. 이 덕분에 bytecode를 한번만 컴파일해 native machine 명령어로 변환하게되었고, kernel에 program을 한 번만 loading시켜 code를 구동시킬 수 있게되었다. 
-
-eBPF bytecode는 명령어 셋을 포함하며 이러한 명령어들은 (virtual) eBPF register에서 동작한다. eBPF 명령어 셋과 register model은 CPU 아키첵쳐에 맞게 동작하도록 설계되었기 때문에, bytecode를 machine code로 컴파일하거나 인터프리팅하는 과정은 매우 직관적이다. 
-
-eBPF virtual machine은 10개의 general-purpose register를 사용하여 0~9까지 번호로 되어있다. 추가적으로 register 10은 stack frame pointer로 사용되어 read만 가능하고 write는 불가능하다. BPF pogram이 실행되면 value의 state를 기록하기 위해 register에 value를 기록한다. 
-
-register는 `BPF_REG_0` ~ `BPF_REG_10`까지 `bpf.h` 파일에 적혀있다.  
-
-실행되기전에 eBPF program에 대한 context argument는 Register 1번에 로드되고, 함수의 return value는 Register 0번에 저장된다.
-
-eBPF code로부터 함수를 실행하기 이전에 함수에 대한 argument들은 Register 1~5까지 위치하게 되는 것이다. 
-
-`linux/bpf.h` header file은 `bpf_insn`라는 구조체를 정의하였는데 이는 BPF 명령어를 나타낸다.
-```c
-struct bpf_insn {
-    __u8 code;          /* opcode */
-    __u8 dst_reg:4;     /* dest register */
-    __u8 src_reg:4;     /* source register */
-    __s16 off;       /* signed offset */
-    __s32 imm;       /* signed immediate constant */
-};
-
-\n
-```
-`code`는 opcode를 말한다. 각 명령어는 opcode를 가진다. 이는 명령어가 실행하는 operation을 표현하는 것이다. 가령 register에 value를 저한다거나 program의 다른 명령어로 jump하는 경우가 있다. 
-
-`bpf_insn` 구조체는 64-bit(8 byte) long이다. 하지만 명령어는 8byte이상을 필요로 할 때가 있다. 이럴 때에는 wide 명령어 encoding을 사용하여 16 bytes long을 표현한다. 이에 대해서는 추후에 알아보도록 하자.
-
-kernel에 로드될 때 bytecode가 로드될 때, eBPF program의 bytecode는 일련의 eBPF 명령어 모음인 `bpf_insn` 구조체들로 표현된다. verifier는 eBPF 명령어들으 분석하여 해당 code가 안전하게 동작할 지 검사하고 보장해준다. 
-
-대부분의 opcode는 다음의 카테고리로 빠져나간다.
-1. register에 value를 적재하기
-2. register의 값을 memory에 저장하기
-3. 산술 연산 수행하기
-4. 특정 조건이 만족하면 다른 명령어로 jump하기
-
-이제 C언어로 eBPF code를 만들어서 사용해보도록 하자.
-
-## 2. Network Interface에서 eBPF "Hello World"
-network packet이 도착하면 실행되는 eBPF program을 만들어보도록 하자.
-
-`hello.bpf.c` file을 만들어서 network packet이 들어오면 counter와 함께 `Hello World`를 출력하도록 하는 eBPF program을 만들었다. file이름 가운에 `bpf`를 넣는 것은 하나의 관례로 생각하면 된다.
-
-- hello.bpf.c
-```c
-#include <linux/bpf.h>
-#include <bpf/bpf_helpers.h>
-
-int counter = 0;
-
-SEC("xdp")
-int hello(struct xdp_md *ctx) {
-    bpf_printk("Hello World %d", counter);
-    counter++; 
-    return XDP_PASS;
-}
-
-char LICENSE[] SEC("license") = "Dual BSD/GPL";
-```
-먼저 코드 설명 뒤에 실행하는 방법에 대해서 알아보도록 하자.
-
-1. `SEC()` macro는 `xdp`라고 불리는 section을 정의하는 것이다. 추후에 알아보도록 하고 지금은 eBPF program의 XDP(eXpress Data Path)를 정의하고 있다는 것만들 알아두도록 하자.
-2. `hello` eBPF program 이름을 볼 수 있는데, 재밌는 것은 program 이름이 function 이름이라는 것이다. 따라서 program을 `hello`라고 부르는 것이다. helper function으로 `bpf_printk`를 사용하여 log를 찍고 `XDP_PASS`반환한다. 이는 network packet을 정상적으로 처리하라는 것을 kernel에 알려주는 것이다. 
-3. `char LICENSE[] SEC("license") = "Dual BSD/GPL";`에서도 `SEC()`가 사용되는 것을 볼 수 있다. 이는 해당 eBPF program을 실행할 라이센스를 알려주는 code이다. 어떤 helper function은 `GPL only`라고 적혀있는데 이는 오직 GPL-compatible license에서만 가능하다는 것이다. `GPL only`로 적힌 helper function에 대해서는 GPL-compatible lince를 가지는 것으로 선언해야 BPF code에서 해당 helper function을 사용할 수 있다. 이에 대해서는 추후에 더 자세히 알아보도록 하자.
-
-위의 예제는 eBPF program을 network interface의 XDP hook point에 attach한 code이다. network packet이 physical 또는 virtual network interface에 들어올 때 XDP event가 발생하고 해당 eBPF program이 실행된다고 생각하면 된다. 
-
-
-이제 c언어로 된 ebpf 빌드 방법이다. 참고로 `clang`은 version 12이상으로 실행하는 것이 좋다고 한다.
-```sh
-clang -target bpf -I/usr/include/$(uname -m)-linux-gnu -g -O2 -c ./hello.bpf.c -o ./hello.bpf.o
-```
-위 code는 compile되어 eBPF virtual machine이 이해할 수 있는 eBPF bytecode로 변환되어야 한다. 이때 `-target bpf`를 사용해야한다. 위의 명령어를 실행하면 `hello.bpf.o` object파일을 `hello.bpf.c` file로 부터 생성해내는데 `-g`는 optional인데, 아래에서 알아보겠지만 data를 좀 더 인간이 보기좋게 표현화해준다. 만약 이 옵션을 설정해주지 않으면 바이트 값으로 디버깅해야한다. 
-
-아래의 에러 발생 시에
-```sh
-In file included from hello.bpf.c:1:
-In file included from /usr/include/linux/bpf.h:11:
-/usr/include/linux/types.h:5:10: fatal error: 'asm/types.h' file not found
-#include <asm/types.h>
-```
-
-다음의 설치하면 해결할 수 있다.
-```sh
-sudo apt-get install -y gcc-multilib
-```
-
-이제 `eBPF` object file을 분석해보도록 하자. 가장 흔히 사용될 수 있는 명령어가 `file`이다.
-```sh
-file hello.bpf.o 
-hello.bpf.o: ELF 64-bit LSB relocatable, eBPF, version 1 (SYSV), with debug_info, not stripped
-```
-`ELF`는 executable and linkable format file이라는 이고, eBPF code이며 64bit-platform에 LSB(least significant bit) 아키텍처를 사용하고 있다는 것을 알려주고 있다. 
-
-`llvm-objdump`를 사용하여 eBPF 명령어를 더 자세히 분석할 수 있다.
-```sh
-llvm-objdump -S hello.bpf.o 
-
-hello.bpf.o:    file format ELF64-BPF
-
-
-Disassembly of section xdp:
-
-0000000000000000 hello:
-;     bpf_printk("Hello World %d", counter);
-       0:       18 06 00 00 00 00 00 00 00 00 00 00 00 00 00 00 r6 = 0 ll
-       2:       61 63 00 00 00 00 00 00 r3 = *(u32 *)(r6 + 0)
-       3:       18 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 r1 = 0 ll
-       5:       b7 02 00 00 0f 00 00 00 r2 = 15
-       6:       85 00 00 00 06 00 00 00 call 6
-;     counter++; 
-       7:       61 61 00 00 00 00 00 00 r1 = *(u32 *)(r6 + 0)
-       8:       07 01 00 00 01 00 00 00 r1 += 1
-       9:       63 16 00 00 00 00 00 00 *(u32 *)(r6 + 0) = r1
-;     return XDP_PASS;
-      10:       b7 00 00 00 02 00 00 00 r0 = 2
-      11:       95 00 00 00 00 00 00 00 exit
-```
-`disassembly`에 대해서 잘 모르지만 위의 코드를 명시적으로 이해하는 것은 크게 어렵지 않다.
-
-`xdp`로 label된 section은 c code에서 `SEC()`에 해당하는 부분이고 해당 section의 함수는 `hello`인 것이다. `bpf_printk`에 해당하는 eBPF bytecode 명령어는 5개의 line으로 된 것이다. `coutner`는 3개의 bytecode 명령어 line으로 `return XDP_PASS`는 두 개의 bytecode 명령어 line으로 되어있는 것이다.
-
-## 3. kernel에 program 로딩 및 로딩된 program 분석하기
-이번에는 `bpftool`을 사용해볼 것이다. `bpftool`은 program을 kernel에 load시켜 동작을 확인하고 debug한다. 물론 program을 programmatically하게 load하는 방식도 있지만 이에 대해서는 추후에 알아보도록 하자.
-
-다음의 예제는 `bpftool`을 사용해서 program을 kernel에 load하는 예제이다. 
-```sh
-bpftool prog load hello.bpf.o /sys/fs/bpf/hello
-```
-
-위는 `hello.bpf.o` object file을 load하고 `/sys/fs/bpf/hello`에 고정시키도록 한 것이다. load에 성공하면 어떠한 응답도 없다. `ls`를 통해 `/sys/fs/bpf/hello`에서 결과를 확인할 수 있다.
-```sh
-ls /sys/fs/bpf/
-hello
-```
-eBPF program이 성공적으로 로딩된 것을 알 수 있다. 이제 `bpftool`을 사용해서 kernel안에서의 bpf program과 그 status에 대해서 확인해보도록 하자.
-
-`bpftool`은 kernel에 loading된 모든 program을 확인해준다.
-```sh
-bpftool prog list
-...
-157: xdp  name hello  tag d35b94b4c0c10efb  gpl
-        loaded_at 2024-01-30T15:37:15+0900  uid 0
-        xlated 96B  jited 63B  memlock 4096B  map_ids 43,44
-        btf_id 239
-```
-
-`hello` eBPF program은 `157` ID를 배정받았다. 이 ID는 kernel에 로딩되면 배정받는 ID값으로 이를 기반으로 program에 대한 정보를 얻어낼 수있다.
-```sh
-bpftool prog show id 157 --pretty
+elasticsearch의 aggregation은 search의 연장선이다. 즉 search 후에 그 결과를 바탕으로 aggregation하는 것이다. 다음은 search에 매칭된 document를 대상으로 지정한 field의 값을 모두 합친 값을 반환하는 aggregation요청이다.  
+```json
+GET kibana_sample_data_ecommerce/_search
 {
-    "id": 157,
-    "type": "xdp",
-    "name": "hello",
-    "tag": "d35b94b4c0c10efb",
-    "gpl_compatible": true,
-    "loaded_at": 1706596635,
-    "uid": 0,
-    "orphaned": false,
-    "bytes_xlated": 96,
-    "jited": true,
-    "bytes_jited": 63,
-    "bytes_memlock": 4096,
-    "map_ids": [43,44
-    ],
-    "btf_id": 239
-}
-```
-file name과 같이 명확하게 그 값의 의미를 알 수 있다. 
-
-1. `id`: 해당 eBPF id는 157이다.
-2. `type`: 이 eBPF program이 XDP event를 사용해 network interface에 attach될 수 있다는 것을 나타낸다.
-3. `name`: 해당 program의 이름이다. 이 이름은 source code의 함수 이름과 같다.
-4. `tag`: program의 또다른 식별자로 나중에 더 자세히 다루어보자.
-5. `gpl_compatible`: 해당 program이 GPL-compatible license를 가지고 있다는 것이다.
-6. `loaded_at`: timestamp로 언제 해당 program이 로딩되었는 지를 나타낸다.
-7. `uid`: user id는 해당 program을 loading한 program으로 root인 0번이다.
-8. `bytes_jited`: eBPF program을 machine code로 compile한 결과가 63 byte라는 것이다. 
-9. `bytes_memlock`: 해당 program은 4096 byte memory를 보존하고 있다는 것이다.
-10. `map_ids`: 해당 program이 165, 166 ID를 가진 BPF map을 참조하고 있다는 것이다. source code에서는 명시적으로 BPF map을 사용하지 않았지만 eBPF program이 global data에 접근하기 위해서 임의적으로 만든 것이다. 이에 대해서는 추후에 자세히 알아보도록 하자.
-11. `btf_id`: `btf_id`는 해당 program을 위한 BTF 정보 block이 있다는 것을 나타낸다. 이 정보는 `-g` flag로 comple할 때만 object file에 포함된다.
-
-`tag`는 SHA(secure hashing algorithm)으로 program 명령어들의 합이다. 이는 program에 대한 또 다른 식별자로 쓰인다. program의 ID는 load, unload가 반복되면 계속 바뀌지만 `tag`는 계속 동일하게 남아있다. `bpftool`은 BPF program을 ID, name, tag 또는 path를 통해 참조한다. 따라서 다음과 같이 program을 참조할 수 있다.
-
-- `bpftool prog show id 540`
-- `bpftool prog show name hello`
-- `bpftool prog show tag d35b94b4c0c10efb`
-- `bpftool prog show pinned /sys/fs/bpf/hello`
-
-여러 program에 같은 name 또는 tag를 달 수는 있지만 id와 고정한 path는 반드시 unique해야한다.
-
-`bytes_xlated` file는 eBPF code가 verifier 통과하고 얼마만큼의 byte로 구성되어있는 지를 나타낸다. `bpftool`을 사용해서 확인해보도록 하자.
-```sh
-bpftool prog dump xlated name hello 
-int hello(struct xdp_md * ctx):
-; bpf_printk("Hello World %d", counter);
-   0: (18) r6 = map[id:43][0]+0
-   2: (61) r3 = *(u32 *)(r6 +0)
-   3: (18) r1 = map[id:44][0]+0
-   5: (b7) r2 = 15
-   6: (85) call bpf_trace_printk#-64880
-; counter++; 
-   7: (61) r1 = *(u32 *)(r6 +0)
-   8: (07) r1 += 1
-   9: (63) *(u32 *)(r6 +0) = r1
-; return XDP_PASS;
-  10: (b7) r0 = 2
-  11: (95) exit
-```
-위 code는 `llvm-objdump`의 결과물과 매우 유사한 disaasemly값이다. 
-
-eBPF bytecode는 JIT compiler에 의해서 CPU아키텍처에 맞는 machine code에 변환된다. `bytes_jited` field는 program이 변환된 후에 machine code로 108 bytes long으로 구성되어 있다는 것을 나타낸다.
-
-`bpftool`을 통해서 assembly형식의 jit-compiled code를 dump를 만들어줄 수 있다.
-```sh
-bpftool prog dump xlated name hello 
-int hello(struct xdp_md * ctx):
-; bpf_printk("Hello World %d", counter);
-   0: (18) r6 = map[id:43][0]+0
-   2: (61) r3 = *(u32 *)(r6 +0)
-   3: (18) r1 = map[id:44][0]+0
-   5: (b7) r2 = 15
-   6: (85) call bpf_trace_printk#-64880
-; counter++; 
-   7: (61) r1 = *(u32 *)(r6 +0)
-   8: (07) r1 += 1
-   9: (63) *(u32 *)(r6 +0) = r1
-; return XDP_PASS;
-  10: (b7) r0 = 2
-  11: (95) exit
-
-
-bpftool prog dump jited name hello 
-int hello(struct xdp_md * ctx):
-bpf_prog_d35b94b4c0c10efb_hello:
-; bpf_printk("Hello World %d", counter);
-   0:   nopl    (%rax,%rax)
-   5:   nop
-   7:   pushq   %rbp
-   8:   movq    %rsp, %rbp
-   b:   pushq   %rbx
-   c:   movabsq $-92458832723968, %rbx
-  16:   movl    (%rbx), %edx
-  19:   movabsq $-110869714558704, %rdi
-  23:   movl    $15, %esi
-  28:   callq   0xffffffffce247d40
-; counter++; 
-  2d:   movl    (%rbx), %edi
-  30:   addq    $1, %rdi
-  34:   movl    %edi, (%rbx)
-; return XDP_PASS;
-  37:   movl    $2, %eax
-  3c:   popq    %rbx
-  3d:   leave
-  3e:   retq
-```
-assembly language를 하나하나 이해할 필요는 없고, 우리의 eBPF code가 다음과 같은 assembly언어로 JIT-compiler에 의해 변환된다는 사실에 집중하도록 하자.
-
-## 4. Attaching to an Event
-program type은 program이 attach된 event의 type과 매치해야한다. 우리의 예제에서는 XDP program으로 `bpftool`을 사용해서 network interface에 대한 `XDP` event에 program을 attach할 수 있다.
-```sh
-bpftool net attach xdp id 157 dev eth0
-```
-eBPF program id 157을 network interface인 `eth0`에 attach시켰다.
-
-`bpftool`을 사용해서 eBPF program에 연결된 network interface를 볼 수 있다.
-```sh
-bpftool net list
-xdp:
-eth0(2) driver id 157
-
-tc:
-
-flow_dissector:
-```
-해당 eBPF program은 eth0 interface에서 발생하는 `XDP` event에 attach되었다. 
-
-우리의 `hello` BPF program은 network packet이 들어올때마다 trace output을 출력할 것이다. `cat /sys/kernel/debug/tracing/trace_pipe`를 사용해도 되지만, `bpftool prog tracelog`를 사용해도 된다. 
-```sh
-bpftool prog tracelog
-...
-<idle>-0       [003] d.s.. 655370.944105: bpf_trace_printk: Hello World 4531
-<idle>-0       [003] d.s.. 655370.944587: bpf_trace_printk: Hello World 4532
-<idle>-0       [003] d.s.. 655370.944896: bpf_trace_printk: Hello World 4533
-```
-`XDP` event들이 network packet이 도착할 때마다 발생하여 우리의 eBPF program이 실행되는 것을 볼 수 있다. 시간이 지나면 알아서 network interface로의 연결이 끝어지므로 참고하도록 하자.
-
-`4531`, `4532`와 같이 counter가 증가하는 것을 볼 수 있다. eBPF에서는 global variable에 대해서 어떻게 관리하고 다루는 지 알아보도록 하자.
-
-eBPF map은 data 구조로 eBPF program으로부터 또는 user space으로부터 접근할 수 있다. map은 다른 program에서도 접근할 수 있기 때문에 map은 value의 state를 유지시키고 다음 실행 program으로 넘겨야한다. 여러 program들이 같은 map에 접근할 수 있는 것이다. 이러한 특징 때문에 map의 의미는 global variable로 변형되었다. 
-
-`bpftool`을 사용하면 kernel에 로딩된 map을 보여준다. 이전에 `43`과 `44` map을 사용한다고 나와있었는데, 확인해보도록 하자.
-```sh
-bpftool map list
-43: array  name hello.bss  flags 0x400
-        key 4B  value 4B  max_entries 1  memlock 4096B
-        btf_id 239
-44: array  name hello.rodata  flags 0x80
-        key 4B  value 15B  max_entries 1  memlock 4096B
-        btf_id 239  frozen
-```
-C source program으로부터 컴파일된 object file안의 bss영역은 global variable들을 가지고 있다는 것을 알 수 있다. `bpftool`을 사용하여 그 내부를 들여다 볼 수 있다.
-```sh
-bpftool map dump name hello.bss 
-[{
-        "value": {
-            ".bss": [{
-                    "counter": 10739
-                }
-            ]
-        }
+  "size": 0,
+  "query": {
+    "term": {
+      "currency": {
+        "value": "EUR"
+      }
     }
-]
-```
-`bpftool map dump id 43`으로도 가능하다. 우리의 `counter`값이 `.bss`영역안에 있는 것을 확인할 수 있다. 
-
-map은 또한 static data를 가지기 위해 사용되는데 이는 `hello.rodata` map을 확인하면 된다. `hello.rodata`는 read-only data라는 의미로 `hello`에 관한 metadata가 들어있다고 보면 된다.
-```sh
-bpftool map dump name hello.rodata
-[{
-        "value": {
-            ".rodata": [{
-                    "hello.____fmt": "Hello World %d"
-                }
-            ]
-        }
+  },
+  "aggs": {
+    "my-sum-aggregation-name": {
+      "sum": {
+        "field": "taxless_total_price"
+      }
     }
-]
+  }
+}
 ```
+요청을 보면 `search API`에 `aggs`가 추가된 것이 전부이다. `size`가 0인 것이 의문일텐데, `size`를 `0`으로 지정하면 search에 상위 매칭된 문서가 무엇인지 받아볼 수가 없다.
 
-참고로 이렇게 data가 이쁘게 보이는 이유는 우리가 빌드할 때 `-g`옵션을 썻기 때문이다. 만약 `-g`옵션을 스지않으면 굉장히 보기 힘든 바이트값들이 나온다. 
+그러나 이와 상관없이 search조건에 매치되는 모든 document들은 aggregation작업에 사용되기 때문에, 문제가 없다. 또한, `size`를 0으로 지정하면 각 shards 대해서 `search`를 하지않고 aggregation만 할 뿐으로 성능에 이득도 있고 캐시에 도움도 더 많이 받을 수 있다.
 
-## 5. eBPF program 종료하기
-network interface로 부터 eBPF program을 detach시키고 싶다면 다음의 명령어를 쓰도록 하자.
-```sh
-bpftool net detach xdp dev eth0
+`aggs`부분 아래에 실행할 aggregation의 이름을 적고 그 하위에 aggregation 종류를 기술한 후 필요한 값들을 넣어 요청한다. 
+
+주의할 것은 aggregation은 search query에 매칭된 모든 document에 대해서 수행되므로, 과도한 양이 대상이 되지 않도록 해ㅐ야한다. 그런 경우 전체 클러스터의 성능을 급격히 저하시킬 수 있기 때문이다. 특히 kibana가 그런 측면에서 부담이 크다. 따라서 kibana는 팀 이외의 외부에 열어두지 않는 것이 좋다. 
+
+응답은 다음과 같다.
+```json
+{
+  "took" : 0,
+  "timed_out" : false,
+  "_shards" : {
+    "total" : 1,
+    "successful" : 1,
+    "skipped" : 0,
+    "failed" : 0
+  },
+  "hits" : {
+    "total" : {
+      "value" : 4675,
+      "relation" : "eq"
+    },
+    "max_score" : null,
+    "hits" : [ ]
+  },
+  "aggregations" : {
+    "my-sum-aggregation-name" : {
+      "value" : 350884.12890625
+    }
+  }
+}
 ```
-다음의 명령어로 network interface에 대한 연결을 종료할 수 있다. 어떠한 output도 없다면 성공적으로 명령어를 실행한 것이다. 
+`value`부분이 `taxless_total_price`의 합이다. 
 
-```sh
-bpftool net list
-xdp:
+elasticsearch에서 지원하는 여러 aggregation을 크게보면 `metric`, `bucket`, `pipeline` aggregation으로 분류된다. 
 
-tc:
+## metric aggregation(집계)
+metric aggregation은 document에 대한 산술적인 연산을 수행한다. 
 
-flow_dissector:
+### avg, max, min, sum aggregation
+`avg`, `max`, `min`, `sum` aggregation은 search에 매칭된 document를 대상으로 지정한 field의 값을 가져온 뒤 각각 평균, 최대값, 최소값, 합을 계산하여 반환한다.
+```json
+GET kibana_sample_data_ecommerce/_search
+{
+  "size": 0,
+  "query": {
+    "term": {
+      "currency": {
+        "value": "EUR"
+      }
+    }
+  },
+  "aggs": {
+    "my-sum-aggregation-name": {
+      "avg": {
+        "field": "taxless_total_price"
+      }
+    }
+  }
+}
+```
+`max`, `min`, `sum`도 `avg`가 있는 칸에 사용하면 된다.
+
+### stats aggregation
+`stats` aggregation은 지정한 field의 `avg`, `max`, `min`,`sum`, `개수`를 모두 계싼해서 반환한다.
+
+```json
+GET kibana_sample_data_ecommerce/_search
+{
+  "size": 0,
+  "query": {
+    "term": {
+      "currency": {
+        "value": "EUR"
+      }
+    }
+  },
+  "aggs": {
+    "my-sum-aggregation-name": {
+      "stats": {
+        "field": "taxless_total_price"
+      }
+    }
+  }
+}
+```
+결과가 다음과 같이 나온다.
+
+```json
+{
 ...
-```
-다음과 같이 비어있다면 성공이다. 
-
-그러나 program은 여전히 kernel에 로딩되어있다. 
-```sh
-bpftool prog show name hello 
-157: xdp  name hello  tag d35b94b4c0c10efb  gpl
-        loaded_at 2024-01-30T15:37:15+0900  uid 0
-        xlated 96B  jited 63B  memlock 4096B  map_ids 43,44
-        btf_id 239
-```
-
-고정된 pseudofile을 삭제함으로서 bpf program을 종료시킬 수 있다.
-```sh
-rm /sys/fs/bpf/hello
-bpftool prog show name hello 
-```
-별다른 output이 없다면 성공이다. 
-
-## 6. BPF to BPF calls
-eBPF program에서 다른 함수를 실행하기 위해서는 `tail calls`를 사용해야한다고 했다. 그러나 이제는(linux kerne 4.16과 LLVM 6.0이후로) eBPF program안에서도 다른 함수를 호출할 수 있는 기능이 있다고 언급했었다. 가능한 지 확인해보도록 하자.
-
-- hello-func.bpf.c
-```c
-#include <linux/bpf.h>
-#include <bpf/bpf_helpers.h>
-
-static __attribute((noinline)) int get_opcode(struct bpf_raw_tracepoint_args *ctx) {
-    return ctx->args[1];
-}
-
-SEC("raw_tp/")
-int hello(struct bpf_raw_tracepoint_args *ctx) {
-    int opcode = get_opcode(ctx);
-    bpf_printk("Syscall: %d", opcode);
-    return 0;
-}
-
-char LICENSE[] SEC("license") = "Dual BSD/GPL";
-```
-`get_opcode`함수는 `args[1]`을 추출해내는 것이 전부인데, `args[1]`이 바로 실행된 syscall의 `opcode`이다. 
-
-`__attribute((noinline))`은 해당 function을 `inline`으로 만들지 않도록 하기 위해서 선언한 지시문이다. `eBPF` function은 다음의 함수를 아래와 같이 쓸 수 있다.
-```c
-SEC("raw_tp/")
-int hello(struct bpf_raw_tracepoint_args *ctx) {
-    int opcode = get_opcode(ctx);
-    bpf_printk("Syscall: %d", opcode);
-    return 0;
+  },
+  "hits" : {
+    "total" : {
+      "value" : 4675,
+      "relation" : "eq"
+    },
+    "max_score" : null,
+    "hits" : [ ]
+  },
+  "aggregations" : {
+    "my-sum-aggregation-name" : {
+      "count" : 4675,
+      "min" : 6.98828125,
+      "max" : 2250.0,
+      "avg" : 75.05542864304813,
+      "sum" : 350884.12890625
+    }
+  }
 }
 ```
-놀랍게도 별다른 작업없이 사용할 수 있다.
+이렇게 여러 숫자 값을 한꺼번에 반환하는 metric aggregation를 `multi-value numeric metric aggregation`이라고 부른다. 
 
-eBPF source code를 object file로 컴파일해보도록 하자.
-```sh
-clang -target bpf -I/usr/include/$(uname -m)-linux-gnu -g -O2 -c ./hello-func.bpf.c -o ./hello-func.bpf.o
+### cardinality aggregation
+`cardinality` aggregation은 지정한 field가 고유한 값의 개수를 계산해 반환한다. 
+```json
+GET kibana_sample_data_ecommerce/_search
+{
+  "size": 0,
+  "query": {
+    "term": {
+      "currency": {
+        "value": "EUR"
+      }
+    }
+  },
+  "aggs": {
+    "my-cardinality-aggregation-name": {
+      "cardinality": {
+        "field": "customer_id",
+        "precision_threshold": 3000
+      }
+    }
+  }
+}
+```
+위의 query는 `currency`의 `value`가 `EUR`이고 `cardinality`는 `customer_id`를 계산하라는 것이다. 즉, `customer_id`가 몇개가 있는 지 세어보라는 것과 같다. 
+
+`precision_threshold` 옵션은 정확도를 조절하기 위해 사용한다. 이 값을 높이면 정확도가 올라가지만 그 만큼 메모리를 더 많이 사용한다. 다만 정확도를 올리기 위해 이 값을 무작정 많이 높일 필요는 없다. `precision_threshold`가 최종 `cardinality`보다 높다면 정확도가 충분히 높다. 반대로 `cardinality`값이 `precision_threshold`를 넘어서면 정확도가 떨어진다. 이를 감안해서 적당한 값을 지정해주는 것이 좋다.
+
+default 로 3000이며 최대값은 40000이다. 
+
+결과는 다음과 같다.
+```json
+{
+  //...
+  "hits" : {
+    "total" : {
+      "value" : 4675,
+      "relation" : "eq"
+    },
+    "max_score" : null,
+    "hits" : [ ]
+  },
+  "aggregations" : {
+    "my-cardinality-aggregation-name" : {
+      "value" : 46
+    }
+  }
+}
+```
+`my-cardinality-aggregation-name.value` 결과는 `46`이므로 `customer_id`가 총 46개 있다는 것이다. 
+
+## bucket aggregation
+bucket aggregation은 document를 특정 기준으로 쪼개어 여러 부분 집합으로 나눈다. 이 부분 집합을 bucket이라고 한다. 또한 각 bucket에 포함된 문서를 대상으로 별도의 하위 aggregation(sub-aggregation)를 수행할 수 있다.
+
+### range aggregation
+`range` aggregation은 지정한 field값을 기준으로 document를 원하는 bucket구간으로 쪼갠다. bucket구간으로 나눌 기준이 될 field와 기준값을 지정해 요청한다.
+
+먼저 sample data를 적재하기 위해서 browser main에 가서 `sample flight data`를 적재하도록 하자. `sample flight data`를 적재하였다면 `kibana_sample_data_flights`라는 index로 data가 적재된다.
+
+다음으로 `range`를 써서 aggregation을 해보도록 하자.
+```json
+GET kibana_sample_data_flights/_search
+{
+  "size": 0,
+  "query": {
+    "match_all": {}
+  },
+  "aggs": {
+    "distance-kilometers-range": {
+      "range": {
+        "field": "DistanceKilometers",
+        "ranges": [
+          {
+            "to": 5000
+          },
+          {
+            "from": 5000,
+            "to": 10000
+          },
+          {
+            "from": 10000
+          }
+        ]
+      },
+      "aggs": {
+        "average-ticket-price": {
+          "avg": {
+            "field": "AvgTicketPrice"
+          }
+        }
+      }
+    }
+  }
+}
+```
+`range`는 `ranges`를 통해서 여러 bucket을 만들 수 있다. 이러한 bucket구간에 또 다른 aggregation을 바로 적용할 수 있는데, 그것이 바로 `average-ticket-price`로 `AvgTicketPrice`의 평균을 구하는 것이다. 재밌는 것은 `range`와 그 bucket에 대한 `aggs`가 같은 level에 있다는 것인데, 이는 `range` 후에 그 결과의 bucket이 바로 `aggs.average-ticket-price`로 간다고 생각하면 된다. 
+
+결과는 다음과 같이 나온다.
+```json
+{
+   , ///
+  "aggregations" : {
+    "distance-kilometers-range" : {
+      "buckets" : [
+        {
+          "key" : "*-5000.0",
+          "to" : 5000.0,
+          "doc_count" : 4052,
+          "average-ticket-price" : {
+            "value" : 513.3930266305937
+          }
+        },
+        {
+          "key" : "5000.0-10000.0",
+          "from" : 5000.0,
+          "to" : 10000.0,
+          "doc_count" : 6042,
+          "average-ticket-price" : {
+            "value" : 677.2621444606182
+          }
+        },
+        {
+          "key" : "10000.0-*",
+          "from" : 10000.0,
+          "doc_count" : 2965,
+          "average-ticket-price" : {
+            "value" : 685.3553124773563
+          }
+        }
+      ]
+    }
+  }
+}
+```
+`range`의 `ranges`에 나열한대로 3개의 bucket이 나온 것을 볼 수 있다. 이 bucekt에는 `average-ticker-price`가 있는데, 각 bucket이 `average-ticket-price`의 평균 aggregation연산이 적용된 결과를 볼 수 있다. 
+
+만약, 위와 같이 bucket에 대한 하위 aggregation이 실행되지 않으면 `doc_count`까지만 세고 끝난다.
+
+```json
+GET kibana_sample_data_flights/_search
+{
+  "size": 0,
+  "query": {
+    "match_all": {}
+  },
+  "aggs": {
+    "distance-kilometers-range": {
+      "range": {
+        "field": "DistanceKilometers",
+        "ranges": [
+          {
+            "to": 5000
+          },
+          {
+            "from": 5000,
+            "to": 10000
+          },
+          {
+            "from": 10000
+          }
+        ]
+      }
+    }
+  }
+}
+```
+이렇게 하위 aggregation에 대한 정의를 하지 않으면, 다음과 같이 `doc_count`만 세고 끝난다.
+
+```json
+{
+    ,///
+  "aggregations" : {
+    "distance-kilometers-range" : {
+      "buckets" : [
+        {
+          "key" : "*-5000.0",
+          "to" : 5000.0,
+          "doc_count" : 4052
+        },
+        {
+          "key" : "5000.0-10000.0",
+          "from" : 5000.0,
+          "to" : 10000.0,
+          "doc_count" : 6042
+        },
+        {
+          "key" : "10000.0-*",
+          "from" : 10000.0,
+          "doc_count" : 2965
+        }
+      ]
+    }
+  }
+}
+```
+이를 통해서 알 수 있는 것은 bucket aggregation의 핵심은 **하위 집계(aggregation)**에 있다는 것이다. document전체에 대해 하나의 aggregation을 수행ㅎ는 것이 아니라 이렇게 document를 여러 구간의 bucket으로 나눈 뒤 각 bucket에 대해서 하위 aggregation을 수행하도록 하는 것이다. 하위 aggregation에 또 bucket aggregation을 넣으면 다시 그 하위 aggregation을 지정하는 것도 가능하다. 그러나 하위 aggregation이 너무 깊어지면 성능에 심각한 문제가 생기니 적당히 지정해야한다.
+
+### date_range aggregation
+`date_range`는 `range`와 유사하나 `date` 타입 field를 대상으로 사용하며 `from`, `to`에 간단한 날짜 시간 계산식을 사용할 수 있다는 점에서 차이가 있다.
+```json
+GET kibana_sample_data_ecommerce/_search
+{
+  "size": 0,
+  "query": {
+    "term": {
+      "currency": {
+        "value": "EUR"
+      }
+    }
+  },
+  "aggs": {
+    "date-range-aggs": {
+      "date_range": {
+        "field": "order_date",
+        "ranges": [
+          {
+            "to": "now-10d/d"
+          },
+          {
+            "from": "now-10d/d",
+            "to": "now"
+          },
+          {
+            "from": "now"
+          }
+        ]
+      }
+    }
+  }
+}
+```
+3개의 bucket을 만들되, `date`를 기준으로 만들 수 있는 것이다. 하나는 현재로 부터 10분전, 하나는 10분부터 지금까지, 하나는 지금부터를 말한다.
+
+```json
+{
+    ...
+  "aggregations" : {
+    "date-range-aggs" : {
+      "buckets" : [
+        {
+          "key" : "*-2023-12-02T00:00:00.000Z",
+          "to" : 1.7014752E12,
+          "to_as_string" : "2023-12-02T00:00:00.000Z",
+          "doc_count" : 299
+        },
+        {
+          "key" : "2023-12-02T00:00:00.000Z-2023-12-12T09:00:29.060Z",
+          "from" : 1.7014752E12,
+          "from_as_string" : "2023-12-02T00:00:00.000Z",
+          "to" : 1.70237162906E12,
+          "to_as_string" : "2023-12-12T09:00:29.060Z",
+          "doc_count" : 1529
+        },
+        {
+          "key" : "2023-12-12T09:00:29.060Z-*",
+          "from" : 1.70237162906E12,
+          "from_as_string" : "2023-12-12T09:00:29.060Z",
+          "doc_count" : 2847
+        }
+      ]
+    }
+  }
+}
+```
+각 shard에 aggregation요청이 분산되어 들어오면, elasticsearch는 그 내용을 shard요청 캐시에 올린다. 이후 동일한 aggregation요청이 같은 shard로 들어오면 이 shard요청 캐시의 데이터를 활용해 그대로 반환한다. 동일한 aggregation요청인지는 요청 본문이 동일한가로 구분한다. 그러나 `now`가 포함된 aggregation은 캐시되지 않는데, 이는 호출 시점에 따라 요청 내용이 달라지는 성격의 요청이기 때문이다.
+
+새로운 데이터가 들어와서 index상태가 달라지면 shard요청 캐시는 무효화되기 때문에 고정된 index가 아니면 캐시 활용도가 떨어가진다.게다가 완전히 같은 aggregation을 여러 번 요청해야하는 상황도 많지 않기 때문에 이 점을 크게 신경 쓸 필요는 없다. 다만 `now`가 포함된 aggregation은 shard요청 캐시에 올라가지 않는다는 점을 인지하고 사용해야한다. 
+
+### histogram aggregation
+`histogram` aggregation는 지정한 field의 값을 기준으로 bucket을 나눈다는 점에서 `range` aggregation과 유사하다. 다른 점은 bucket 구분의 경계 기준값을 직접 지정하는 것이 아니라, bucket의 간격을 지정해서 경계를 나눈다는 점이다. 
+
+```json
+GET kibana_sample_data_flights/_search
+{
+  "size": 0,
+  "query": {
+    "match_all": {}
+  },
+  "aggs": {
+    "my-histogram": {
+      "histogram": {
+        "field": "DistanceKilometers",
+        "interval": 1000
+      }
+    }
+  }
+}
+```
+`interval`을 기준으로 bucket을 자동으로 나누어 생성해낸다. 0~1000(0<=x<1000), 1000~2000(1000<=x<2000) ... 이런 식이 되는 것이다. 응답은 다음과 같다.
+
+```json
+{
+  
+  "aggregations" : {
+    "my-histogram" : {
+      "buckets" : [
+        {
+          "key" : 0.0,
+          "doc_count" : 1806
+        },
+        {
+          "key" : 1000.0,
+          "doc_count" : 1153
+        },
+        {
+          "key" : 2000.0,
+          "doc_count" : 530
+        },
+        {
+          "key" : 3000.0,
+          "doc_count" : 241
+        },
+        ...
+      ]
+    }
+  }
+}
 ```
 
-eBPF program을 실행시켜보도록 하자.
-```sh
-bpftool prog load hello-func.bpf.o /sys/fs/bpf/hello
-bpftool prog list name hello 
-244: raw_tracepoint  name hello  tag 3d9eb0c23d4ab186  gpl
-        loaded_at 2024-01-30T17:59:58+0900  uid 0
-        xlated 80B  jited 60B  memlock 4096B  map_ids 88
-        btf_id 305
+`interval`만을 입력하면 0을 시작으로 histogram 계급을 나눈다. 즉 `[0, 1000), [1000, 2000)` 이런식으로 생성되는 것이다. 시작 위치를 바꾸고 싶다면 `offset`을 사용하면 된다.
+```json
+GET kibana_sample_data_flights/_search
+{
+  "size": 0,
+  "query": {
+    "match_all": {}
+  },
+  "aggs": {
+    "my-histogram": {
+      "histogram": {
+        "field": "DistanceKilometers",
+        "interval": 1000,
+        "offset": 50
+      }
+    }
+  }
+}
 ```
-`get_opcode()`함수를 보기위해서 eBPF bytecode를 검사해보도록 하자.
+`offset`이 50이기 때문에, 50 - 1000부터 시작한다. 즉, `[-950, 50), [50, 1050), [1050, 2050)`으로 bucket이 만들어지는 것이다. 
 
-```sh
-bpftool prog dump xlated name hello 
-int hello(struct bpf_raw_tracepoint_args * ctx):
-; int opcode = get_opcode(ctx);
-   0: (85) call pc+7#bpf_prog_cbacc90865b1b9a5_get_opcode
-; bpf_printk("Syscall: %d", opcode);
-   1: (18) r1 = map[id:88][0]+0
-   3: (b7) r2 = 12
-   4: (bf) r3 = r0
-   5: (85) call bpf_trace_printk#-64880
-; return 0;
-   6: (b7) r0 = 0
-   7: (95) exit
-int get_opcode(struct bpf_raw_tracepoint_args * ctx):
-; return ctx->args[1];
-   8: (79) r0 = *(u64 *)(r1 +8)
-; return ctx->args[1];
-   9: (95) exit
+```json
+#! Elasticsearch built-in security features are not enabled. Without authentication, your cluster could be accessible to anyone. See https://www.elastic.co/guide/en/elasticsearch/reference/7.17/security-minimal-setup.html to enable security.
+{
+    ...
+  "aggregations" : {
+    "my-histogram" : {
+      "buckets" : [
+        {
+          "key" : -950.0,
+          "doc_count" : 643
+        },
+        {
+          "key" : 50.0,
+          "doc_count" : 1231
+        },
+        {
+          "key" : 1050.0,
+          "doc_count" : 1111
+        },
+        {
+          "key" : 2050.0,
+          "doc_count" : 522
+        },
+        ...
+      ]
+    }
+  }
+}
 ```
-`hello` eBPF program이 `get_opcode()`함수를 호출하는 것을 볼 수 있다. `get_opcode()` byte code도 있는 것을 확인할 수 있다. 단, stack size가 512 byte로 한정되어 있기 때문에 BPF에서 BPF 함수를 깊게 호출할 수 없다. 
+참고로 `DistanceKilometers` field는 음수값이 존재하지않지만 `[-950, 50)`구간을 통해서 0~49까지의 값을 측정할 수 있는 것이다.
 
+이 밖에도 `min_doc_count`를 지정해서 bucket내 document수가 일정 이하인 bucket은 결과에서 제외할 수 있다. 
+
+### date_histogram
+`date_histogram` aggregation은 `histogram` aggregation과 유사하지만 대상으로 `date` type을 사용한다는 점에서 다르다. 또한, `interval`대신에 `calendar_interval`이나 `fixed_interval`을 사용한다. 
+```json
+GET kibana_sample_data_ecommerce/_search
+{
+  "size": 0,
+  "query": {
+    "match_all": {}
+  },
+  "aggs": {
+    "my-date-histogram": {
+      "date_histogram": {
+        "field": "order_date",
+        "calendar_interval": "day"
+      }
+    }
+  }
+}
+```
+`date_histogram`에서 `calendar_interval`을 `day`로 사용하면 document를 bucket단위로 쪼개어낸다. 
+
+```json
+#! Elasticsearch built-in security features are not enabled. Without authentication, your cluster could be accessible to anyone. See https://www.elastic.co/guide/en/elasticsearch/reference/7.17/security-minimal-setup.html to enable security.
+{
+  //
+  "aggregations" : {
+    "my-date-histogram" : {
+      "buckets" : [
+        {
+          "key_as_string" : "2023-11-30T00:00:00.000Z",
+          "key" : 1701302400000,
+          "doc_count" : 146
+        },
+        {
+          "key_as_string" : "2023-12-01T00:00:00.000Z",
+          "key" : 1701388800000,
+          "doc_count" : 153
+        },
+        {
+          "key_as_string" : "2023-12-02T00:00:00.000Z",
+          "key" : 1701475200000,
+          "doc_count" : 143
+        },
+        ...
+      ]
+    }
+  }
+}
+```
+
+`calendar_interval`에는 다음과 같은 값들을 지정할 수 있다.
+1. `minute` 또는 1m: 분 단위
+2. `hour` 또는 1h: 시간 단위
+3. `day` 또는 1d: 일 단위
+4. `month` 또는 1M: 월 단위
+5. `quarter` 또는 1q: 분기 단위
+6. `year` 또는 1y: 연 단위
+
+`calendar_interval`은 구체적인 시간을 요청할 수 없다. 즉, `1m`, `1h`은 가능하지만 `12m`, `13h`와 같은 시간은 불가능하다. 
+
+이 경우에는 `fixed_interval `를 사용해야한다. `fixed_interval`는 `ms`, `s`, `m`, `h`, `d` 단위로 사용할 수 있기 때문이다. 가령 3시간 단위로 bucket을 만들고 싶다면 `fixed_interval: 3h`으로 만들면 된다.
+
+추가적으로 `date_histogram` aggregation도 `offset`과 `min_doc_count`를 설정할 수 있다.
+
+### terms aggregation
+`terms` aggregation은 지정한 field에 대해 가장 빈도수가 높은 `term`순서대로 bucket을 생성한다. bucket을 최대 몇 개까지 생성할 것인지를 `size`로 지정한다.
+
+test를 위해서 sample data로 `Sample web logs`를 다운받도록 하자.
+```json
+GET kibana_sample_data_logs/_search
+{
+  "size": 0,
+  "query": {
+    "match_all": {}
+  },
+  "aggs": {
+    "my-terms-aggs": {
+      "terms": {
+        "field": "host.keyword",
+        "size": 10
+      }
+    }
+  }
+}
+```
+위의 경우는 `host.keyword` field에 대해서 `term`의 개수를 새고 많은 수부터 bucket을 나열한다. 
+
+```json
+{
+    //...
+  },
+  "aggregations" : {
+    "my-terms-aggs" : {
+      "doc_count_error_upper_bound" : 0,
+      "sum_other_doc_count" : 0,
+      "buckets" : [
+        {
+          "key" : "artifacts.elastic.co",
+          "doc_count" : 6488
+        },
+        {
+          "key" : "www.elastic.co",
+          "doc_count" : 4779
+        },
+        {
+          "key" : "cdn.elastic-elastic-elastic.org",
+          "doc_count" : 2255
+        },
+        {
+          "key" : "elastic-elastic-elastic.org",
+          "doc_count" : 552
+        }
+      ]
+    }
+  }
+}
+```
+`terms` aggregation은 각 shard에서 `size`개수만큼 `term`을 뽑아 빈도수를 센다. 각 shard에서 수행된 계산을 한 곳으로 모아 합산한 후 `size`개수만큼 bucket을 뽑는다. 그러므로 `size`개수와 각 document의 분포에 따라 그 결과가 정확하지 않을 수 있다. 각 bucket의 `doc_count`는 물론 하위 aggregation 결과도 정확한 수치가 아닐 수 있다. 특히, 해당 field의 고유한 `term`개수가 `size`보다 많다면 상위에 뽑혀야 할 `term`이 최종 결과에 포함되지 않을 수 있다.
+
+응답의 `doc_count_error_upper_bound` field는 `doc_count`의 오차 상한선을 나타낸다. 이 값이 크다면 `size`를 높이는 것을 고려할 수 있다. 물론 `size`를 높이면 정확도는 올라가지만 그만큼 성능이 하락한다. 
+
+`sum_other_doc_count` field는 최종적으로 bucket에 포함되지 않은 document 수를 나타낸다. 상위 `term`에 들지 못한 document 개수의 총합이다. 
+
+만약 모든 `term`에 대해서 pagenation으로 전부 순회하며 aggregation을 하려고 한다면 `size`를 무작정 계속 높이는 것보다는 `composite` aggregation을 사용하는 것이 좋다. `terms` aggregation는 기본적으로 상위 `term`을 뽑아서 aggregation을 수행하도록 설계되었다. 
+
+### composite aggregation
+`composite` aggregastion은 `sources`로 지정된 하위 aggregation의 bucket을 pagenation을 이용해서 효율적으로 순회하는 aggregation이다. `sources`에 하위 aggregation를 여러 개 지정한 뒤 조합된 bucket을 생성할 수 있다.
+
+```json
+GET kibana_sample_data_logs/_search
+{
+  "size": 0,
+  "query": {
+    "match_all": {}
+  },
+  "aggs": {
+    "composite-aggs": {
+      "composite": {
+        "size": 100, 
+        "sources": [
+          {
+            "terms-aggs": {
+              "terms": {
+                "field": "host.keyword"
+              }
+            }
+          },
+          {
+            "date-histogram-aggs": {
+              "date_histogram": {
+                "field": "@timestamp",
+                "calendar_interval": "day"
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}
+```
+`composite`아래의 `size`는 한 번에 몇 개의 bucket을 반환할 것인가를 지정한다. `sources`에는 bucket을 조합하여 순회할 하위 aggregation을 지정한다. 여기에는 모든 종류의 aggregation을 하위 aggregation으로 지정할 수는 없다. `terms` aggregation, `histogram` aggregation, `date_histogram` aggregation 등 일부 aggregation만 지정할 수 있다. 
+
+잘보면 `terms` aggregation에는 `size`가 없다. 이는 `composite`자체가 bucket을 순차적으로 방문하는 목적의 aggregation이기 때문에 `terms`에 `size`개념이 필요하지 않다. 즉 모든 `term`을 뽑아낸다는 것이다.
+
+위의 예시는 100개의 bucket을 만들되 `host.keyword`의 `term`중 상위로 나오는 `term`의 100개로 뽑아내고, 이를 `@timestamp`기준으로 `day`마다 aggregation하는 것이다.
+
+```json
+{
+  //..
+  "aggregations" : {
+    "composite-aggs" : {
+      "after_key" : {
+        "terms-aggs" : "cdn.elastic-elastic-elastic.org",
+        "date-histogram-aggs" : 1704844800000
+      },
+      "buckets" : [
+        {
+          "key" : {
+            "terms-aggs" : "artifacts.elastic.co",
+            "date-histogram-aggs" : 1701561600000
+          },
+          "doc_count" : 124
+        },
+        // ...
+        {
+          "key" : {
+            "terms-aggs" : "cdn.elastic-elastic-elastic.org",
+            "date-histogram-aggs" : 1704758400000
+          },
+          "doc_count" : 37
+        },
+        {
+          "key" : {
+            "terms-aggs" : "cdn.elastic-elastic-elastic.org",
+            "date-histogram-aggs" : 1704844800000
+          },
+          "doc_count" : 24
+        }
+      ]
+    }
+  }
+}
+```
+`artifacts.elastic.co` term이 가장 많이 나온 것이고, 그 다음이 `cdn.elastic-elastic-elastic.org`이다. 다음으로 해당 `term`을 가진 document에 대해서 날짜기준으로 aggregation한 것이다. 
+
+`after_key`부분에서 확인할 수 있는 조합이 바로 pagenation을 위해서 필요한 가장 마지막 bucket의 key다. 이 `after_key`를 가져와서 다음과 같이 요청하면 작업 결과의 다음 페이지를 조회할 수 있다. 처음 요청과 동일한 내용이지만 `composite`아래에 `after`부분이 추가되었다.
+```json
+GET kibana_sample_data_logs/_search
+{
+  "size": 0,
+  "query": {
+    "match_all": {}
+  },
+  "aggs": {
+    "composite-aggs": {
+      "composite": {
+        "size": 100, 
+        "sources": [
+          {
+            "terms-aggs": {
+              "terms": {
+                "field": "host.keyword"
+              }
+            }
+          },
+          {
+            "date-histogram-aggs": {
+              "date_histogram": {
+                "field": "@timestamp",
+                "calendar_interval": "day"
+              }
+            }
+          }
+        ],
+        "after": {
+          "terms-aggs" : "cdn.elastic-elastic-elastic.org",
+          "date-histogram-aggs" : 1704844800000
+        }
+      }
+    }
+  }
+}
+```
+`after`부분에 응답의 `after_key`을 그대로 써주면 다음 pagenation이 가능한 것이다. 

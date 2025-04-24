@@ -10,12 +10,12 @@ import (
 
 func main() {
 	velogAPI := velog.NewVelogAPI(config.Manager.VelogConfig.URL, "chappi")
-	resp, err := velogAPI.GetPost("4023bf7e-df1c-4288-9e4f-a37983406912")
+	resp, err := velogAPI.GetPost("ElasticSearch-정리-9일차-Aggregation")
 	if err != nil {
 		fmt.Printf("failed to get post content of velog: %s", err)
 		return
 	}
-	fmt.Println(resp.Data.LastPostHistory.Body)
+	fmt.Println(resp.Body)
 	// inputFile := "data.txt"
 	outputFile := "output.md"
 
@@ -35,7 +35,7 @@ func main() {
 	// 	return
 	// }
 	// 변환된 내용을 출력 파일에 저장
-	err = os.WriteFile(outputFile, []byte(resp.Data.LastPostHistory.Body), 0644)
+	err = os.WriteFile(outputFile, []byte(resp.Body), 0644)
 	if err != nil {
 		fmt.Println("파일 쓰기 실패:", err)
 		return
