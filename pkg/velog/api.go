@@ -19,7 +19,46 @@ func NewVelogAPI(apiUrl string, username string) VelogAPI {
 	}
 }
 
-func (v VelogAPI) GetPost(urlSlug string) (VelogPost, error) {
+func (v VelogAPI) Posts(cursor string, limit int) ([]VelogPostsItem, error) {
+	reqBody := graphQLQuery.posts(v.Username, cursor, limit)
+
+	resp, err := httpclient.Post(httpclient.PostRequestParam{
+		URL:         v.VelogAPIURL,
+		Body:        bytes.NewBuffer([]byte(reqBody)),
+		ContentType: "application/json",
+	})
+
+	if err != nil {
+		return []VelogPostsItem{}, err
+	}
+
+	var model postsModel
+	err = json.Unmarshal(resp, &model)
+	if err != nil {
+		return []VelogPostsItem{}, err
+	}
+
+	posts := []VelogPostsItem{}
+
+	for _, post := range model.Data.Posts {
+		posts = append(posts, VelogPostsItem{
+			commonVelogPost: commonVelogPost{
+				ID:        post.ID,
+				Title:     post.Title,
+				CreatedAt: post.ReleasedAt,
+				UpdatedAt: post.UpdatedAt,
+			},
+			ShortDesc: post.ShortDescription,
+			Thumnail:  post.Thumbnail,
+			UrlSlog:   post.URLSlug,
+			Tags:      post.Tags,
+		})
+	}
+
+	return posts, nil
+}
+
+func (v VelogAPI) Post(urlSlug string) (VelogPost, error) {
 	reqBody := graphQLQuery.readPost(v.Username, urlSlug)
 
 	resp, err := httpclient.Post(httpclient.PostRequestParam{
@@ -28,27 +67,25 @@ func (v VelogAPI) GetPost(urlSlug string) (VelogPost, error) {
 		ContentType: "application/json",
 	})
 
-	var model readPostModel
 	if err != nil {
 		return VelogPost{}, err
 	}
 
+	var model readPostModel
 	err = json.Unmarshal(resp, &model)
 	if err != nil {
 		return VelogPost{}, err
 	}
 
 	post := VelogPost{
-		ID:        model.Data.Post.ID,
-		Title:     model.Data.Post.Title,
-		Body:      model.Data.Post.Body,
-		CreatedAt: model.Data.Post.ReleasedAt,
-		UpdatedAt: model.Data.Post.UpdatedAt,
+		commonVelogPost: commonVelogPost{
+			ID:        model.Data.Post.ID,
+			Title:     model.Data.Post.Title,
+			CreatedAt: model.Data.Post.ReleasedAt,
+			UpdatedAt: model.Data.Post.UpdatedAt,
+		},
+		Body: model.Data.Post.Body,
 	}
 
 	return post, nil
 }
-
-// func (v *VelogAPI) GetAllPost(cursor string) []VelogPost {
-
-// }

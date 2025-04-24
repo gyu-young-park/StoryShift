@@ -10,7 +10,21 @@ import (
 
 func main() {
 	velogAPI := velog.NewVelogAPI(config.Manager.VelogConfig.URL, "chappi")
-	resp, err := velogAPI.GetPost("ElasticSearch-정리-9일차-Aggregation")
+
+	velogPosts, err := velogAPI.Posts("", 10)
+	if err != nil {
+		fmt.Println("failed to retrive posts: ", err)
+		return
+	}
+
+	for _, post := range velogPosts {
+		fmt.Printf("Title: %v\n", post.ID)
+		fmt.Printf("URLSlog: %v\n", post.UrlSlog)
+		fmt.Printf("Desc: %v\n", post.ShortDesc)
+		fmt.Println()
+	}
+
+	resp, err := velogAPI.Post(velogPosts[9].UrlSlog)
 	if err != nil {
 		fmt.Printf("failed to get post content of velog: %s", err)
 		return

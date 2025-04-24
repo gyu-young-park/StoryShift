@@ -6,12 +6,43 @@ type variables struct {
 	UrlSlug  string `json:"url_slug"`
 	PostId   string `json:"post_id"`
 	Username string `json:"username"`
+	Cursor   string `json:"cursor"`
+	Litmit   int    `json:"limit"`
 }
 
 type graphQLRequestBody struct {
 	OperationName string    `json:"operationName"`
 	Variables     variables `json:"variables"`
 	Query         string    `json:"query"`
+}
+
+type postsModel struct {
+	Data struct {
+		Posts []struct {
+			ID               string `json:"id"`
+			Title            string `json:"title"`
+			ShortDescription string `json:"short_description"`
+			Thumbnail        string `json:"thumbnail"`
+			User             struct {
+				ID       string `json:"id"`
+				Username string `json:"username"`
+				Profile  struct {
+					ID        string `json:"id"`
+					Thumbnail string `json:"thumbnail"`
+					Typename  string `json:"__typename"`
+				} `json:"profile"`
+				Typename string `json:"__typename"`
+			} `json:"user"`
+			URLSlug       string    `json:"url_slug"`
+			ReleasedAt    time.Time `json:"released_at"`
+			UpdatedAt     time.Time `json:"updated_at"`
+			CommentsCount int       `json:"comments_count"`
+			Tags          []string  `json:"tags"`
+			IsPrivate     bool      `json:"is_private"`
+			Likes         int       `json:"likes"`
+			Typename      string    `json:"__typename"`
+		} `json:"posts"`
+	} `json:"data"`
 }
 
 type readPostModel struct {
@@ -96,12 +127,4 @@ type readPostModel struct {
 			Typename string `json:"__typename"`
 		} `json:"post"`
 	} `json:"data"`
-}
-
-type VelogPost struct {
-	ID        string    `json:"id"`
-	Title     string    `json:"title"`
-	Body      string    `json:"body"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
 }
