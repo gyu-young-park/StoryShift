@@ -5,10 +5,13 @@ import (
 	"os"
 
 	"github.com/gyu-young-park/VelogStoryShift/internal/config"
+	"github.com/gyu-young-park/VelogStoryShift/pkg/log"
 	"github.com/gyu-young-park/VelogStoryShift/pkg/velog"
 )
 
 func main() {
+	logger := log.GetLogger()
+	logger.Info("Hello World!")
 	velogAPI := velog.NewVelogAPI(config.Manager.VelogConfig.URL, "chappi")
 
 	velogPosts, err := velogAPI.Posts("", 10)
