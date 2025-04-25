@@ -3,6 +3,7 @@ package log
 import (
 	"fmt"
 
+	"github.com/gyu-young-park/VelogStoryShift/internal/config"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -34,6 +35,33 @@ func convertAnyListToZapFieldList(variables ...any) ([]zap.Field, bool) {
 	}
 
 	return fields, true
+}
+
+func setZapConfig(c config.LogConfigModel) zap.Config {
+	encoderConfig := zapcore.EncoderConfig{
+		TimeKey:        "timestamp",
+		LevelKey:       "level",
+		NameKey:        "logger",
+		CallerKey:      "caller",
+		MessageKey:     "message",
+		StacktraceKey:  "stacktrace",
+		LineEnding:     zapcore.DefaultLineEnding,
+		EncodeLevel:    zapcore.CapitalLevelEncoder,    // Capitalize the log level names
+		EncodeTime:     zapcore.ISO8601TimeEncoder,     // ISO8601 UTC timestamp format
+		EncodeDuration: zapcore.SecondsDurationEncoder, // Duration in seconds
+		EncodeCaller:   zapcore.ShortCallerEncoder,     // Short caller (file and line)
+	}
+
+	logLevel := zap.NewAtomicLevelAt(zap.InfoLevel)
+
+	return zap.Config{
+		Level:            logLevel,
+		Development:      true,
+		Encoding:         "json",
+		EncoderConfig:    encoderConfig,
+		OutputPaths:      []string{"stdout"},
+		ErrorOutputPaths: []string{"stderr"},
+	}
 }
 
 func (z *ZapLoggerImpl) SetLevel(level loggerLevel) error {

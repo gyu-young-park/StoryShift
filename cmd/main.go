@@ -10,7 +10,7 @@ import (
 )
 
 func main() {
-	logger := log.GetLogger()
+	logger := log.GetLogger(config.Manager.AppConfig.Log)
 	logger.Info("Hello World!")
 	velogAPI := velog.NewVelogAPI(config.Manager.VelogConfig.URL, "chappi")
 
@@ -20,19 +20,19 @@ func main() {
 		return
 	}
 
-	for _, post := range velogPosts {
-		fmt.Printf("Title: %v\n", post.ID)
-		fmt.Printf("URLSlog: %v\n", post.UrlSlog)
-		fmt.Printf("Desc: %v\n", post.ShortDesc)
-		fmt.Println()
-	}
+	// for _, post := range velogPosts {
+	// 	fmt.Printf("Title: %v\n", post.ID)
+	// 	fmt.Printf("URLSlog: %v\n", post.UrlSlog)
+	// 	fmt.Printf("Desc: %v\n", post.ShortDesc)
+	// 	fmt.Println()
+	// }
 
 	resp, err := velogAPI.Post(velogPosts[9].UrlSlog)
 	if err != nil {
 		fmt.Printf("failed to get post content of velog: %s", err)
 		return
 	}
-	fmt.Println(resp.Body)
+	//fmt.Println(resp.Body)
 	// inputFile := "data.txt"
 	outputFile := "output.md"
 
