@@ -7,11 +7,12 @@ import (
 	"github.com/gyu-young-park/VelogStoryShift/internal/config"
 	"github.com/gyu-young-park/VelogStoryShift/pkg/log"
 	"github.com/gyu-young-park/VelogStoryShift/pkg/velog"
+	"go.uber.org/zap"
 )
 
 func main() {
 	logger := log.GetLogger(config.Manager.AppConfig.Log)
-	logger.Info("Hello World!")
+	logger.Info("App starts", zap.String("hellp", "world"))
 	velogAPI := velog.NewVelogAPI(config.Manager.VelogConfig.URL, "chappi")
 
 	velogPosts, err := velogAPI.Posts("", 10)

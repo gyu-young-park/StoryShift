@@ -2,14 +2,12 @@ package log
 
 import (
 	"fmt"
-	"sync"
 
 	"github.com/gyu-young-park/VelogStoryShift/internal/config"
 )
 
 var (
-	core logger    = nil
-	once sync.Once = sync.Once{}
+	core logger = nil
 )
 
 var LoggerLevelEnum = loggerLevelEnum{
@@ -61,11 +59,18 @@ func newLogger(c config.LogConfigModel) logger {
 		l, err := newZapLoggerImpl(setZapConfig(c))
 		if err != nil {
 			fmt.Printf("failed to create logger: %v", c.Library)
-			return newFmtLoggerImpl()
+			return newFmtLoggerImpl(c)
 		}
 
 		return l
 	}
 
-	return newFmtLoggerImpl()
+	return newFmtLoggerImpl(c)
+}
+
+func SetLoggerLevel(l loggerLevel) error {
+	if core == nil {
+		return fmt.Errorf("logger is now nil")
+	}
+	return core.SetLevel(l)
 }

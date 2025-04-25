@@ -8,19 +8,20 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-type ZapLoggerImpl struct {
+type zapLoggerImpl struct {
 	logger *zap.Logger
 	level  zap.AtomicLevel
 }
 
-func newZapLoggerImpl(config zap.Config) (*ZapLoggerImpl, error) {
+func newZapLoggerImpl(config zap.Config) (*zapLoggerImpl, error) {
 	logger, err := config.Build()
 	if err != nil {
 		return nil, err
 	}
 
-	return &ZapLoggerImpl{
+	return &zapLoggerImpl{
 		logger: logger,
+		level:  config.Level,
 	}, nil
 }
 
@@ -64,7 +65,7 @@ func setZapConfig(c config.LogConfigModel) zap.Config {
 	}
 }
 
-func (z *ZapLoggerImpl) SetLevel(level loggerLevel) error {
+func (z *zapLoggerImpl) SetLevel(level loggerLevel) error {
 	logLevelMapper := map[loggerLevel]zapcore.Level{
 		LoggerLevelEnum.INFO:  zapcore.InfoLevel,
 		LoggerLevelEnum.DEBUG: zapcore.DebugLevel,
@@ -81,7 +82,7 @@ func (z *ZapLoggerImpl) SetLevel(level loggerLevel) error {
 	return nil
 }
 
-func (z *ZapLoggerImpl) Info(msg string, variables ...any) {
+func (z *zapLoggerImpl) Info(msg string, variables ...any) {
 	fields, ok := convertAnyListToZapFieldList(variables...)
 	if !ok {
 		z.logger.Sugar().Info(msg)
@@ -90,7 +91,7 @@ func (z *ZapLoggerImpl) Info(msg string, variables ...any) {
 	z.logger.Info(msg, fields...)
 }
 
-func (z *ZapLoggerImpl) Debug(msg string, variables ...any) {
+func (z *zapLoggerImpl) Debug(msg string, variables ...any) {
 	fields, ok := convertAnyListToZapFieldList(variables...)
 	if !ok {
 		z.logger.Sugar().Debug(msg)
@@ -99,7 +100,7 @@ func (z *ZapLoggerImpl) Debug(msg string, variables ...any) {
 	z.logger.Debug(msg, fields...)
 }
 
-func (z *ZapLoggerImpl) Warn(msg string, variables ...any) {
+func (z *zapLoggerImpl) Warn(msg string, variables ...any) {
 	fields, ok := convertAnyListToZapFieldList(variables...)
 	if !ok {
 		z.logger.Sugar().Warn(msg)
@@ -108,7 +109,7 @@ func (z *ZapLoggerImpl) Warn(msg string, variables ...any) {
 	z.logger.Warn(msg, fields...)
 }
 
-func (z *ZapLoggerImpl) Error(msg string, variables ...any) {
+func (z *zapLoggerImpl) Error(msg string, variables ...any) {
 	fields, ok := convertAnyListToZapFieldList(variables...)
 	if !ok {
 		z.logger.Sugar().Error(msg)
@@ -117,23 +118,23 @@ func (z *ZapLoggerImpl) Error(msg string, variables ...any) {
 	z.logger.Error(msg, fields...)
 }
 
-func (z *ZapLoggerImpl) Infof(msg string, variables ...any) {
+func (z *zapLoggerImpl) Infof(msg string, variables ...any) {
 	z.logger.Sugar().Infof(msg, variables...)
 }
 
-func (z *ZapLoggerImpl) Debugf(msg string, variables ...any) {
+func (z *zapLoggerImpl) Debugf(msg string, variables ...any) {
 	z.logger.Sugar().Debugf(msg, variables...)
 }
 
-func (z *ZapLoggerImpl) Warnf(msg string, variables ...any) {
+func (z *zapLoggerImpl) Warnf(msg string, variables ...any) {
 	z.logger.Sugar().Warnf(msg, variables...)
 }
 
-func (z *ZapLoggerImpl) Errorf(msg string, variables ...any) {
+func (z *zapLoggerImpl) Errorf(msg string, variables ...any) {
 	z.logger.Sugar().Errorf(msg, variables...)
 }
 
-func (z *ZapLoggerImpl) Close() error {
+func (z *zapLoggerImpl) Close() error {
 	defer z.logger.Sync()
 	return nil
 }
