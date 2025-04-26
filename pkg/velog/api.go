@@ -39,7 +39,6 @@ func (v VelogAPI) Posts(cursor string, limit int) ([]VelogPostsItem, error) {
 	}
 
 	posts := []VelogPostsItem{}
-
 	for _, post := range model.Data.Posts {
 		posts = append(posts, VelogPostsItem{
 			commonVelogPost: commonVelogPost{

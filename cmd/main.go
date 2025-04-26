@@ -1,13 +1,9 @@
 package main
 
 import (
-	"fmt"
-	"os"
-
 	"github.com/gyu-young-park/VelogStoryShift/internal/config"
 	"github.com/gyu-young-park/VelogStoryShift/pkg/log"
 	"github.com/gyu-young-park/VelogStoryShift/pkg/server"
-	"github.com/gyu-young-park/VelogStoryShift/pkg/velog"
 
 	"go.uber.org/zap"
 )
@@ -15,13 +11,13 @@ import (
 func main() {
 	logger := log.GetLogger()
 	logger.Info("App starts", zap.String("hellp", "world"))
-	velogAPI := velog.NewVelogAPI(config.Manager.VelogConfig.URL, "chappi")
+	// velogAPI := velog.NewVelogAPI(config.Manager.VelogConfig.URL, "chappi")
 
-	velogPosts, err := velogAPI.Posts("", 10)
-	if err != nil {
-		fmt.Println("failed to retrive posts: ", err)
-		return
-	}
+	// velogPosts, err := velogAPI.Posts("", 10)
+	// if err != nil {
+	// 	fmt.Println("failed to retrive posts: ", err)
+	// 	return
+	// }
 
 	// for _, post := range velogPosts {
 	// 	fmt.Printf("Title: %v\n", post.ID)
@@ -30,14 +26,14 @@ func main() {
 	// 	fmt.Println()
 	// }
 
-	resp, err := velogAPI.Post(velogPosts[9].UrlSlog)
-	if err != nil {
-		fmt.Printf("failed to get post content of velog: %s", err)
-		return
-	}
+	// resp, err := velogAPI.Post(velogPosts[9].UrlSlog)
+	// if err != nil {
+	// 	fmt.Printf("failed to get post content of velog: %s", err)
+	// 	return
+	// }
 	//fmt.Println(resp.Body)
 	// inputFile := "data.txt"
-	outputFile := "output.md"
+	// outputFile := "output.md"
 
 	// // 파일 읽기
 	// data, err := os.ReadFile(inputFile)
@@ -55,11 +51,11 @@ func main() {
 	// 	return
 	// }
 	// 변환된 내용을 출력 파일에 저장
-	err = os.WriteFile(outputFile, []byte(resp.Body), 0644)
-	if err != nil {
-		fmt.Println("파일 쓰기 실패:", err)
-		return
-	}
+	// err = os.WriteFile(outputFile, []byte(resp.Body), 0644)
+	// if err != nil {
+	// 	fmt.Println("파일 쓰기 실패:", err)
+	// 	return
+	// }
 
 	server.Start(config.Manager.ConfigModel)
 	// fmt.Println("변환 완료! 결과는", outputFile)
