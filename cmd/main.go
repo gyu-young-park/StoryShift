@@ -6,13 +6,14 @@ import (
 
 	"github.com/gyu-young-park/VelogStoryShift/internal/config"
 	"github.com/gyu-young-park/VelogStoryShift/pkg/log"
+	"github.com/gyu-young-park/VelogStoryShift/pkg/server"
 	"github.com/gyu-young-park/VelogStoryShift/pkg/velog"
-	"github.com/gyu-young-park/VelogStoryShift/pkg/web"
+
 	"go.uber.org/zap"
 )
 
 func main() {
-	logger := log.GetLogger(config.Manager.AppConfig.Log)
+	logger := log.GetLogger()
 	logger.Info("App starts", zap.String("hellp", "world"))
 	velogAPI := velog.NewVelogAPI(config.Manager.VelogConfig.URL, "chappi")
 
@@ -60,7 +61,6 @@ func main() {
 		return
 	}
 
-	s := web.Server(config.Manager.ConfigModel)
-	s.Run(config.Manager.ConfigModel)
+	server.Start(config.Manager.ConfigModel)
 	// fmt.Println("변환 완료! 결과는", outputFile)
 }

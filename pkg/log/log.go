@@ -47,9 +47,9 @@ type closable interface {
 	Close() error
 }
 
-func GetLogger(c config.LogConfigModel) logger {
+func GetLogger() logger {
 	if core == nil {
-		core = newLogger(c)
+		core = newLogger(config.Manager.AppConfig.Log)
 	}
 	return core
 }

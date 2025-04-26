@@ -12,6 +12,6 @@ type configManager struct {
 	ConfigModel
 }
 
-func (c *configManager) Parse(parser ConfigParser) {
+func (c *configManager) Setup(parser ConfigParser) {
 	parser.parse(&c.ConfigModel)
 }
