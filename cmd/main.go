@@ -11,52 +11,5 @@ import (
 func main() {
 	logger := log.GetLogger()
 	logger.Info("App starts", zap.String("hellp", "world"))
-	// velogAPI := velog.NewVelogAPI(config.Manager.VelogConfig.URL, "chappi")
-
-	// velogPosts, err := velogAPI.Posts("", 10)
-	// if err != nil {
-	// 	fmt.Println("failed to retrive posts: ", err)
-	// 	return
-	// }
-
-	// for _, post := range velogPosts {
-	// 	fmt.Printf("Title: %v\n", post.ID)
-	// 	fmt.Printf("URLSlog: %v\n", post.UrlSlog)
-	// 	fmt.Printf("Desc: %v\n", post.ShortDesc)
-	// 	fmt.Println()
-	// }
-
-	// resp, err := velogAPI.Post(velogPosts[9].UrlSlog)
-	// if err != nil {
-	// 	fmt.Printf("failed to get post content of velog: %s", err)
-	// 	return
-	// }
-	//fmt.Println(resp.Body)
-	// inputFile := "data.txt"
-	// outputFile := "output.md"
-
-	// // 파일 읽기
-	// data, err := os.ReadFile(inputFile)
-	// if err != nil {
-	// 	fmt.Println("파일 읽기 실패:", err)
-	// 	return
-	// }
-
-	// content := string(data)
-
-	// 이스케이프된 줄바꿈 문자열("\n")을 실제 줄바꿈으로 변환
-	// converted, err := strconv.Unquote(resp.Data.LastPostHistory.Body)
-	// if err != nil {
-	// 	fmt.Println("unquote 실패", err)
-	// 	return
-	// }
-	// 변환된 내용을 출력 파일에 저장
-	// err = os.WriteFile(outputFile, []byte(resp.Body), 0644)
-	// if err != nil {
-	// 	fmt.Println("파일 쓰기 실패:", err)
-	// 	return
-	// }
-
 	server.Start(config.Manager.ConfigModel)
-	// fmt.Println("변환 완료! 결과는", outputFile)
 }

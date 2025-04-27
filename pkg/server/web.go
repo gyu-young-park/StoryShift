@@ -1,6 +1,7 @@
 package server
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/gyu-young-park/VelogStoryShift/internal/config"
@@ -10,8 +11,9 @@ import (
 
 func Start(c config.ConfigModel) {
 	logger := log.GetLogger()
+
 	s := http.Server{
-		Addr:    ":8080",
+		Addr:    fmt.Sprintf(":%s", config.Manager.AppConfig.Server.Port),
 		Handler: controller.Manager.GetHTTPHandler(),
 	}
 

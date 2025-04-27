@@ -2,7 +2,8 @@ package velog
 
 import (
 	"encoding/json"
-	"fmt"
+
+	"github.com/gyu-young-park/VelogStoryShift/pkg/log"
 )
 
 var graphQLQuery = graphQLQueryManager{}
@@ -11,6 +12,7 @@ type graphQLQueryManager struct {
 }
 
 func makeGraphQLQuery(operation velogOperationEnum, q velogQueryEnum, v variables) string {
+	logger := log.GetLogger()
 	body := graphQLRequestBody{
 		OperationName: string(operation),
 		Variables:     v,
@@ -19,7 +21,7 @@ func makeGraphQLQuery(operation velogOperationEnum, q velogQueryEnum, v variable
 
 	r, err := json.Marshal(body)
 	if err != nil {
-		fmt.Println(err)
+		logger.Errorf("failed to make graphql query: %s", err.Error())
 		return ""
 	}
 
