@@ -1,6 +1,7 @@
 package v1controller
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -100,7 +101,7 @@ func downloadPost(c *gin.Context) {
 
 	f := file.File{
 		FileMeta: file.FileMeta{
-			Name:      req.Name,
+			Name:      velogPost.Title,
 			Extention: "md",
 		},
 		Content: velogPost.Body,
@@ -116,5 +117,5 @@ func downloadPost(c *gin.Context) {
 	}
 
 	// origin filename and filename for client
-	c.FileAttachment(zipFile.Name(), "post.zip")
+	c.FileAttachment(zipFile.Name(), fmt.Sprintf("%s.zip", velogPost.Title))
 }

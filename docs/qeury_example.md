@@ -75,10 +75,10 @@ http://localhost:8080/v1/velog/post?name=chappi&url_slog=eBPF
 
 - request
 ```sh
-http://localhost:8080/v1/velog/post/download?name=chappi&url_slog=eBPF
+http://localhost:9596/v1/velog/post/download?name=chappi&url_slog=eBPF
 ```
 
 - response
 ```
-eBPF를+배워보자+1일차+-+eBPF란_.md
+post.zip
 ```

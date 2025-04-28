@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 
 	"github.com/gyu-young-park/VelogStoryShift/pkg/log"
 )
@@ -37,7 +38,6 @@ func (f fileHandler) CreateFile(file File) (closeFileFunc, *os.File, error) {
 	}
 
 	if _, err := tmpFile.WriteString(file.Content); err != nil {
-
 		return closeFunc, nil, err
 	}
 
@@ -53,7 +53,7 @@ func (f fileHandler) CreateFile(file File) (closeFileFunc, *os.File, error) {
 func (f fileHandler) CreateZipFile(zipFileInfo ZipFile) (closeFileFunc, *os.File, error) {
 	close, zipFile, err := f.CreateFile(File{
 		FileMeta: FileMeta{
-			Name:      "post",
+			Name:      zipFileInfo.Name,
 			Extention: "zip",
 		},
 		Content: "",
@@ -68,15 +68,15 @@ func (f fileHandler) CreateZipFile(zipFileInfo ZipFile) (closeFileFunc, *os.File
 	}
 
 	zipWriter := zip.NewWriter(zipFile)
-	zipWriter.Close()
+	defer zipWriter.Close()
 
 	for _, file := range zipFileInfo.Files {
-		zip, err := zipWriter.Create(file.Name())
+		w, err := zipWriter.Create(filepath.Base(file.Name()))
 		if err != nil {
 			return closeFunc, nil, err
 		}
 
-		if _, err := io.Copy(zip, file); err != nil {
+		if _, err := io.Copy(w, file); err != nil {
 			return closeFunc, nil, err
 		}
 	}
@@ -86,28 +86,34 @@ func (f fileHandler) CreateZipFile(zipFileInfo ZipFile) (closeFileFunc, *os.File
 
 func (f fileHandler) DonwloadPost(file File) (closeFileFunc, *os.File, error) {
 	logger := log.GetLogger()
-	close, titleFile, err := f.CreateFile(File{
-		FileMeta: file.FileMeta,
-		Content:  file.FileMeta.Name,
+	closeTileFileFunc, titleFile, err := f.CreateFile(File{
+		FileMeta: FileMeta{
+			Name:      "title",
+			Extention: "txt",
+		},
+		Content: file.FileMeta.Name,
 	})
 
-	defer close()
 	if err != nil {
 		logger.Errorf("failed to create subject file:%s", titleFile.Name())
-		return func() {}, nil, err
+		return func() {
+			defer closeTileFileFunc()
+		}, nil, err
 	}
 
-	close, contentFile, err := f.CreateFile(file)
-	defer close()
+	clostContentFileFunc, contentFile, err := f.CreateFile(file)
 
 	if err != nil {
 		logger.Errorf("failed to create content file:%s", contentFile.Name())
-		return func() {}, nil, err
+		return func() {
+			defer closeTileFileFunc()
+			defer clostContentFileFunc()
+		}, nil, err
 	}
 
 	closeZipFile, zip, err := f.CreateZipFile(ZipFile{
 		FileMeta: FileMeta{
-			Name:      "post",
+			Name:      file.Name,
 			Extention: "zip",
 		},
 		Files: []*os.File{
@@ -118,11 +124,15 @@ func (f fileHandler) DonwloadPost(file File) (closeFileFunc, *os.File, error) {
 	if err != nil {
 		logger.Errorf("failed to create zip file:%s", err)
 		return func() {
+			defer closeTileFileFunc()
+			defer clostContentFileFunc()
 			defer closeZipFile()
 		}, nil, err
 	}
 
 	return func() {
+		defer closeTileFileFunc()
+		defer clostContentFileFunc()
 		defer closeZipFile()
 	}, zip, nil
 }
