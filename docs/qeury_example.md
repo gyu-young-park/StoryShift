@@ -52,8 +52,7 @@ http://localhost:8080/v1/velog/posts?name=chappi&limit=3&url_slog=6d7991cc-0cb3-
 }
 ```
 
-1. Get post information in detail
-
+2. Get post information in detail
 - request
 ```sh
 http://localhost:8080/v1/velog/post?name=chappi&url_slog=eBPF
@@ -70,4 +69,16 @@ http://localhost:8080/v1/velog/post?name=chappi&url_slog=eBPF
     "body": "# What is eBPF, and why is it important\neBPF는 custom code를 작성하여 ... (생략)..."
   }
 }
+```
+
+3. Download post
+
+- request
+```sh
+http://localhost:8080/v1/velog/post/download?name=chappi&url_slog=eBPF
+```
+
+- response
+```
+eBPF를+배워보자+1일차+-+eBPF란_.md
 ```

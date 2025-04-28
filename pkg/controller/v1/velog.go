@@ -5,6 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gyu-young-park/VelogStoryShift/internal/config"
+	"github.com/gyu-young-park/VelogStoryShift/pkg/file"
 	"github.com/gyu-young-park/VelogStoryShift/pkg/log"
 	"github.com/gyu-young-park/VelogStoryShift/pkg/velog"
 )
@@ -25,6 +26,7 @@ func (v *velogController) GetAPIGroup() string {
 
 func (v *velogController) RegisterAPI(router *gin.RouterGroup) {
 	router.GET("/post", post)
+	router.GET("/post/download", downloadPost)
 	router.GET("/posts", posts)
 }
 
@@ -75,4 +77,44 @@ func posts(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"posts": velogPosts,
 	})
+}
+
+func downloadPost(c *gin.Context) {
+	logger := log.GetLogger()
+	var req VelogPostRequestModel
+	err := c.ShouldBind(&req)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	logger.Debugf("Velog username: %s, url_slog: %s",
+		req.Name,
+		req.URLSlog)
+	velogApi := velog.NewVelogAPI(config.Manager.VelogConfig.URL, req.Name)
+	velogPost, err := velogApi.Post(req.URLSlog)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	f := file.File{
+		FileMeta: file.FileMeta{
+			Name:      req.Name,
+			Extention: "md",
+		},
+		Content: velogPost.Body,
+	}
+
+	closeFunc, zipFile, err := file.Handler.DonwloadPost(f)
+	logger.Infof("get zip file: %s", zipFile.Name())
+	defer closeFunc()
+	if err != nil {
+		logger.Errorf("failed to return zip file: %s", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// origin filename and filename for client
+	c.FileAttachment(zipFile.Name(), "post.zip")
 }
