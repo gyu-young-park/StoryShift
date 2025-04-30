@@ -10,48 +10,57 @@ import (
 	"github.com/gyu-young-park/VelogStoryShift/pkg/log"
 )
 
-var Handler = fileHandler{}
+const (
+	TEMP_DIR = "./temp"
+)
 
-type fileHandler struct {
+func NewFileHandler() *FileHandler {
+	return &FileHandler{
+		files: make(map[string]*os.File),
+	}
 }
 
-type closeFileFunc func()
+type FileHandler struct {
+	files map[string]*os.File
+}
 
-func (f fileHandler) CreateFile(file File) (closeFileFunc, *os.File, error) {
+func (f *FileHandler) Close() {
+	for _, file := range f.files {
+		os.Remove(file.Name())
+		file.Close()
+	}
+}
+
+func (f *FileHandler) CreateFile(file File) (string, error) {
 	logger := log.GetLogger()
 	logger.Infof("download file: %s", file.GetFilename())
 
-	dir := "./temp"
-	if _, err := os.Stat(dir); os.IsNotExist(err) {
-		os.Mkdir(dir, 0755)
+	if _, err := os.Stat(TEMP_DIR); os.IsNotExist(err) {
+		os.Mkdir(TEMP_DIR, 0755)
 	}
 
-	tmpFile, err := os.Create(fmt.Sprintf("%s/%s", dir, file.GetFilename()))
+	tmpFile, err := os.Create(fmt.Sprintf("%s/%s", TEMP_DIR, file.GetFilename()))
 	if err != nil {
-		return func() {}, nil, err
+		return "", err
 	}
+
+	f.files[tmpFile.Name()] = tmpFile
+
 	logger.Infof("temp file: %s", tmpFile.Name())
 
-	closeFunc := func() {
-		defer os.Remove(tmpFile.Name())
-		defer tmpFile.Close()
-	}
-
 	if _, err := tmpFile.WriteString(file.Content); err != nil {
-		return closeFunc, nil, err
+		return "", err
 	}
 
 	if _, err := tmpFile.Seek(0, io.SeekStart); err != nil {
-		os.Remove(tmpFile.Name())
-		tmpFile.Close()
-		return closeFunc, nil, err
+		return "", err
 	}
 
-	return closeFunc, tmpFile, nil
+	return tmpFile.Name(), nil
 }
 
-func (f fileHandler) CreateZipFile(zipFileInfo ZipFile) (closeFileFunc, *os.File, error) {
-	close, zipFile, err := f.CreateFile(File{
+func (f *FileHandler) CreateZipFile(zipFileInfo ZipFile) (string, error) {
+	zipFile, err := f.CreateFile(File{
 		FileMeta: FileMeta{
 			Name:      zipFileInfo.Name,
 			Extention: "zip",
@@ -59,34 +68,30 @@ func (f fileHandler) CreateZipFile(zipFileInfo ZipFile) (closeFileFunc, *os.File
 		Content: "",
 	})
 
-	closeFunc := func() {
-		defer close()
-	}
-
 	if err != nil {
-		return closeFunc, nil, err
+		return "", err
 	}
 
-	zipWriter := zip.NewWriter(zipFile)
+	zipWriter := zip.NewWriter(f.files[zipFile])
 	defer zipWriter.Close()
 
 	for _, file := range zipFileInfo.Files {
 		w, err := zipWriter.Create(filepath.Base(file.Name()))
 		if err != nil {
-			return closeFunc, nil, err
+			return "", err
 		}
 
 		if _, err := io.Copy(w, file); err != nil {
-			return closeFunc, nil, err
+			return "", err
 		}
 	}
 
-	return closeFunc, zipFile, nil
+	return zipFile, nil
 }
 
-func (f fileHandler) DonwloadPost(file File) (closeFileFunc, *os.File, error) {
+func (f *FileHandler) DonwloadPost(file File) (string, error) {
 	logger := log.GetLogger()
-	closeTileFileFunc, titleFile, err := f.CreateFile(File{
+	titleFile, err := f.CreateFile(File{
 		FileMeta: FileMeta{
 			Name:      "title",
 			Extention: "txt",
@@ -95,44 +100,31 @@ func (f fileHandler) DonwloadPost(file File) (closeFileFunc, *os.File, error) {
 	})
 
 	if err != nil {
-		logger.Errorf("failed to create subject file:%s", titleFile.Name())
-		return func() {
-			defer closeTileFileFunc()
-		}, nil, err
+		logger.Errorf("failed to create subject file:%s", titleFile)
+		return "", err
 	}
 
-	clostContentFileFunc, contentFile, err := f.CreateFile(file)
+	contentFile, err := f.CreateFile(file)
 
 	if err != nil {
-		logger.Errorf("failed to create content file:%s", contentFile.Name())
-		return func() {
-			defer closeTileFileFunc()
-			defer clostContentFileFunc()
-		}, nil, err
+		logger.Errorf("failed to create content file:%s", contentFile)
+		return "", err
 	}
 
-	closeZipFile, zip, err := f.CreateZipFile(ZipFile{
+	zip, err := f.CreateZipFile(ZipFile{
 		FileMeta: FileMeta{
 			Name:      file.Name,
 			Extention: "zip",
 		},
 		Files: []*os.File{
-			titleFile, contentFile,
+			f.files[titleFile], f.files[contentFile],
 		},
 	})
 
 	if err != nil {
 		logger.Errorf("failed to create zip file:%s", err)
-		return func() {
-			defer closeTileFileFunc()
-			defer clostContentFileFunc()
-			defer closeZipFile()
-		}, nil, err
+		return "", err
 	}
 
-	return func() {
-		defer closeTileFileFunc()
-		defer clostContentFileFunc()
-		defer closeZipFile()
-	}, zip, nil
+	return zip, nil
 }

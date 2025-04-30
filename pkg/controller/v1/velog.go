@@ -107,9 +107,11 @@ func downloadPost(c *gin.Context) {
 		Content: velogPost.Body,
 	}
 
-	closeFunc, zipFile, err := file.Handler.DonwloadPost(f)
-	logger.Infof("get zip file: %s", zipFile.Name())
-	defer closeFunc()
+	fileHandler := file.NewFileHandler()
+	defer fileHandler.Close()
+
+	zipFilename, err := fileHandler.DonwloadPost(f)
+	logger.Infof("get zip file: %s", zipFilename)
 	if err != nil {
 		logger.Errorf("failed to return zip file: %s", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -117,5 +119,5 @@ func downloadPost(c *gin.Context) {
 	}
 
 	// origin filename and filename for client
-	c.FileAttachment(zipFile.Name(), fmt.Sprintf("%s.zip", velogPost.Title))
+	c.FileAttachment(zipFilename, fmt.Sprintf("%s.zip", velogPost.Title))
 }
