@@ -6,11 +6,11 @@ type VelogUserNameReqestModel struct {
 
 type VelogPostRequestModel struct {
 	VelogUserNameReqestModel
-	URLSlog string `form:"url_slog"`
+	URLSlug string `form:"url_slug"`
 }
 
 type VelogPostsRequestModel struct {
 	VelogUserNameReqestModel
 	PostId string `form:"post_id"`
-	Limit  int    `form:"limit"`
+	Count  int    `form:"count"`
 }

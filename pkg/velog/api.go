@@ -49,7 +49,7 @@ func (v VelogAPI) Posts(cursor string, limit int) ([]VelogPostsItem, error) {
 			},
 			ShortDesc: post.ShortDescription,
 			Thumnail:  post.Thumbnail,
-			UrlSlog:   post.URLSlug,
+			UrlSlug:   post.URLSlug,
 			Tags:      post.Tags,
 		})
 	}

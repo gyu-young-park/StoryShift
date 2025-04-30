@@ -24,6 +24,16 @@ type FileHandler struct {
 	files map[string]*os.File
 }
 
+func (f *FileHandler) GetFile(filename string) *os.File {
+	logger := log.GetLogger()
+	fh, ok := f.files[filename]
+	if !ok {
+		logger.Errorf("there is no file in this file handler: %s", filename)
+		return nil
+	}
+	return fh
+}
+
 func (f *FileHandler) Close() {
 	for _, file := range f.files {
 		os.Remove(file.Name())
@@ -89,7 +99,7 @@ func (f *FileHandler) CreateZipFile(zipFileInfo ZipFile) (string, error) {
 	return zipFile, nil
 }
 
-func (f *FileHandler) DonwloadPost(file File) (string, error) {
+func (f *FileHandler) MakeZipFileWithTitle(file File) (string, error) {
 	logger := log.GetLogger()
 	titleFile, err := f.CreateFile(File{
 		FileMeta: FileMeta{

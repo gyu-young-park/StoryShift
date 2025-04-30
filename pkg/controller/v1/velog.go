@@ -1,14 +1,12 @@
 package v1controller
 
 import (
-	"fmt"
 	"net/http"
+	"path/filepath"
 
 	"github.com/gin-gonic/gin"
-	"github.com/gyu-young-park/VelogStoryShift/internal/config"
-	"github.com/gyu-young-park/VelogStoryShift/pkg/file"
 	"github.com/gyu-young-park/VelogStoryShift/pkg/log"
-	"github.com/gyu-young-park/VelogStoryShift/pkg/velog"
+	"github.com/gyu-young-park/VelogStoryShift/pkg/service"
 )
 
 type velogController struct {
@@ -29,6 +27,7 @@ func (v *velogController) RegisterAPI(router *gin.RouterGroup) {
 	router.GET("/post", post)
 	router.GET("/post/download", downloadPost)
 	router.GET("/posts", posts)
+	router.GET("/posts/download", downloadAllPosts)
 }
 
 func post(c *gin.Context) {
@@ -40,11 +39,11 @@ func post(c *gin.Context) {
 		return
 	}
 
-	logger.Debugf("Velog username: %s, url_slog: %s",
+	logger.Debugf("Velog username: %s, url_slug: %s",
 		req.Name,
-		req.URLSlog)
-	velogApi := velog.NewVelogAPI(config.Manager.VelogConfig.URL, req.Name)
-	velogPost, err := velogApi.Post(req.URLSlog)
+		req.URLSlug)
+
+	velogPost, err := service.GetPost(req.Name, req.URLSlug)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -64,12 +63,12 @@ func posts(c *gin.Context) {
 		return
 	}
 
-	logger.Infof("Velog username: %s, url_slog: %s, limit: %v",
+	logger.Infof("Velog username: %s, post_id: %s, count: %v",
 		req.Name,
 		req.PostId,
-		req.Limit)
-	velogApi := velog.NewVelogAPI(config.Manager.VelogConfig.URL, req.Name)
-	velogPosts, err := velogApi.Posts(req.PostId, req.Limit)
+		req.Count)
+
+	velogPosts, err := service.GetPosts(req.Name, req.PostId, req.Count)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -89,28 +88,15 @@ func downloadPost(c *gin.Context) {
 		return
 	}
 
-	logger.Debugf("Velog username: %s, url_slog: %s",
-		req.Name,
-		req.URLSlog)
-	velogApi := velog.NewVelogAPI(config.Manager.VelogConfig.URL, req.Name)
-	velogPost, err := velogApi.Post(req.URLSlog)
+	logger.Debugf("Velog username: %s, url_slug: %s", req.Name, req.URLSlug)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	f := file.File{
-		FileMeta: file.FileMeta{
-			Name:      velogPost.Title,
-			Extention: "md",
-		},
-		Content: velogPost.Body,
-	}
+	closeFunc, zipFilename, err := service.FetchVelogPostZip(req.Name, req.URLSlug)
+	defer closeFunc()
 
-	fileHandler := file.NewFileHandler()
-	defer fileHandler.Close()
-
-	zipFilename, err := fileHandler.DonwloadPost(f)
 	logger.Infof("get zip file: %s", zipFilename)
 	if err != nil {
 		logger.Errorf("failed to return zip file: %s", err)
@@ -118,6 +104,25 @@ func downloadPost(c *gin.Context) {
 		return
 	}
 
-	// origin filename and filename for client
-	c.FileAttachment(zipFilename, fmt.Sprintf("%s.zip", velogPost.Title))
+	c.FileAttachment(zipFilename, filepath.Base(zipFilename))
+}
+
+func downloadAllPosts(c *gin.Context) {
+	logger := log.GetLogger()
+	var req VelogUserNameReqestModel
+	if err := c.ShouldBind(&req); err != nil {
+		logger.Errorf("client error occureed: %s", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	closeFunc, zipFilename, err := service.FetchAllVelogPostsZip(req.Name)
+	defer closeFunc()
+	if err != nil {
+		logger.Errorf("server error occureed: %s", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.FileAttachment(zipFilename, filepath.Base(zipFilename))
 }

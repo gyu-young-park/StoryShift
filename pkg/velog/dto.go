@@ -18,6 +18,6 @@ type VelogPostsItem struct {
 	commonVelogPost
 	ShortDesc string   `json:"short_description"`
 	Thumnail  string   `json:"thumnail"`
-	UrlSlog   string   `json:"url_slog"`
+	UrlSlug   string   `json:"url_slug"`
 	Tags      []string `json:"tags"`
 }

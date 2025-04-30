@@ -2,7 +2,7 @@
 
 - request
 ```sh
-http://localhost:8080/v1/velog/posts?name=chappi&limit=3&url_slog=6d7991cc-0cb3-4dfa-b212-8de9f2476663
+http://localhost:9596/v1/velog/posts?name=chappi&count=100&post_id=36181f27-fcb7-4164-89c4-5d6db6c1b2ee
 ```
 
 - response
@@ -10,45 +10,30 @@ http://localhost:8080/v1/velog/posts?name=chappi&limit=3&url_slog=6d7991cc-0cb3-
 {
   "posts": [
     {
-      "id": "4023bf7e-df1c-4288-9e4f-a37983406912",
-      "title": "eBPF를 배워보자 3일차 - eBPF Program 해부",
-      "created_at": "2025-04-22T12:36:08.446Z",
-      "updated_at": "2025-04-26T10:10:15.629Z",
-      "short_description": "이전에는 bcc를 사용해서 eBPF 사용해보았는데, 이제는 c언어를 직접 사용하여 bcc가 어떻게 동작했는 지 알아보도록 하자.c또는 Rust source code는 eBPF bytecode로 컴파일된다. 이 eBPF bytecode는 JIT compile되거나 int",
-      "thumnail": "https://velog.velcdn.com/images/chappi/post/42f30731-7b86-4713-a429-3acc63d288a1/image.png",
-      "url_slog": "eBPF를-배워보자-3일차-eBPF-Program-해부",
+      "id": "aeaf24f4-6a15-4fef-9d1b-ac98bb53d82b",
+      "title": "Java 재활 훈련 9일차 - Object class, record, System properties, StringBuilder, StringTokenizer, Wrapper class, reflection, Annotation",
+      "created_at": "2025-02-28T08:38:04.583Z",
+      "updated_at": "2025-04-11T04:36:13.286Z",
+      "short_description": "클래스를 선언할 때 extends 키워드로 다른 클래스를 상속하지 않으면 암묵적으로 java.lang.Object 클래스를 상속하게 된다. 따라서, 모든 클래스는 Object의 자손 클래스이다. 모든 객체들은 Object가 가진 메서드를 사용할 수 있다.equals()",
+      "thumnail": "",
+      "url_slug": "Java-재활-훈련-9일차-Object-class-record-System-properties-StringBuilder-StringTokenizer-Wrapper-class-reflection-Annotation",
       "tags": [
-        "ebpf",
-        "linux"
+        "Java"
       ]
     },
     {
-      "id": "edcce6f5-581c-464f-a202-21ba6792ae62",
-      "title": "eBPF를 배워보자 2일차 - eBPF \"Hello World\"",
-      "created_at": "2025-04-22T12:33:38.459Z",
-      "updated_at": "2025-04-24T07:21:18.353Z",
-      "short_description": "만약 필요한 toolchain들이 없다면 설치해주도록 하자. ebpf를 실행하기 위해서는 libbpf가 필요하다. libbpf는 BPF프로그램을 compile하고 load하는 데 사용되는 C라이브러리이다. 즉, BPF 프로그램의 실행에 초점을 맞춘 도구라고 볼 수 있는",
-      "thumnail": "https://velog.velcdn.com/images/chappi/post/c7797b46-fbed-457b-a74c-8e2e0963ff5d/image.png",
-      "url_slog": "eBPF를-배워보자-2일차-eBPF-Hello-World",
+      "id": "1cfef770-b342-46ab-8865-84f730cc14c0",
+      "title": "Java 재활 훈련 8일차 - Exception",
+      "created_at": "2025-02-28T08:36:12.266Z",
+      "updated_at": "2025-04-14T07:15:52.643Z",
+      "short_description": "java에서는 예와(exception)라고 부르는 오류가 있다. exception은 잘못된 문법, 코딩으로 인해 발생한 오류를 말한다. exception이 발생하면 프로그램은 곧바로 종료된다는 점에서 에러와 동일하지만, exception의 처리를 통해 실행 상태를 유지",
+      "thumnail": "",
+      "url_slug": "Java-재활-훈련-8일차-Exception",
       "tags": [
-        "ebpf",
-        "linux"
+        "Java"
       ]
     },
-    {
-      "id": "d0295770-ea06-48a8-bc39-2f8f02182f4c",
-      "title": "eBPF를 배워보자 1일차 - eBPF란?",
-      "created_at": "2025-04-22T12:29:46.672Z",
-      "updated_at": "2025-04-26T05:16:49.245Z",
-      "short_description": "What is eBPF, and why is it important\neBPF는 custom code를 작성하여 kernel에 동적으로 적재하여 kernel의 동작을 변경할 수 있다. 이를 통해서 좋은 성능의 네트워킹, observability, security tool",
-      "thumnail": "https://velog.velcdn.com/images/chappi/post/9eeb7980-69a2-43a8-a578-dad3b7e620f7/image.png",
-      "url_slog": "eBPF",
-      "tags": [
-        "ebpf",
-        "linux"
-      ]
-    }
-  ]
+    ...
 }
 ```
 
