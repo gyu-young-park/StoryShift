@@ -59,16 +59,37 @@ func FetchVelogPostZip(username, postId string) (closeFunc, string, error) {
 	}, zipFilename, err
 }
 
+type RenamedFileJSON struct {
+	Origin string `json:"origin"`
+	Rename string `json:"rename"`
+}
+
 func FetchAllVelogPostsZip(username string) (closeFunc, string, error) {
 	logger := log.GetLogger()
 	velogApi := velog.NewVelogAPI(config.Manager.VelogConfig.URL, username)
 
 	fileHandler := file.NewFileHandler()
+
 	closeFunc := func() {
 		defer fileHandler.Close()
 	}
+
 	fileList := []*os.File{}
 	cursor := ""
+
+	renamedFilename, err := fileHandler.CreateFile(file.File{
+		FileMeta: file.FileMeta{
+			Name:      "rename",
+			Extention: "json",
+		},
+		Content: "[]",
+	})
+
+	if err != nil {
+		return closeFunc, "", err
+	}
+
+	fileList = append(fileList, fileHandler.GetFile(renamedFilename))
 
 	for {
 		posts, err := velogApi.Posts(cursor, 10)
@@ -86,9 +107,18 @@ func FetchAllVelogPostsZip(username string) (closeFunc, string, error) {
 				return closeFunc, "", err
 			}
 
+			sanitizedFile, isSanitized := sanitizeBasePathSpecialCase(post.Title)
+			if isSanitized {
+				logger.Debugf("sanitiz file [%s] to [%s]", post.Title, sanitizedFile)
+				err := fileHandler.AppendDataToJsonFile(renamedFilename, RenamedFileJSON{Origin: post.Title, Rename: sanitizedFile})
+				if err != nil {
+					logger.Error(err.Error())
+				}
+			}
+
 			f, err := fileHandler.CreateFile(file.File{
 				FileMeta: file.FileMeta{
-					Name:      sanitizeBasePathSpecialCase(post.Title),
+					Name:      sanitizedFile,
 					Extention: "md",
 				},
 				Content: post.Body,

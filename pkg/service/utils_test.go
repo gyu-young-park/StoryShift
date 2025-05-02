@@ -13,6 +13,7 @@ func TestSanitizeBasePathSpecialCaseWithSuccess(t *testing.T) {
 	expect := "hello world it's '-' test"
 
 	data = filepath.Base(data)
-	result := sanitizeBasePathSpecialCase(data)
-	assert.Equal(expect, result)
+	sanitized, isSanitized := sanitizeBasePathSpecialCase(data)
+	assert.Equal(expect, sanitized)
+	assert.True(isSanitized)
 }

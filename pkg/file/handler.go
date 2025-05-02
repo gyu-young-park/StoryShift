@@ -2,6 +2,7 @@ package file
 
 import (
 	"archive/zip"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -140,4 +141,32 @@ func (f *FileHandler) MakeZipFileWithTitle(file File) (string, error) {
 	}
 
 	return zip, nil
+}
+
+func (f *FileHandler) AppendDataToJsonFile(filename string, data any) error {
+	logger := log.GetLogger()
+	fh := f.GetFile(filename)
+	if fh == nil {
+		return fmt.Errorf("can't find file [%s] please create file", filename)
+	}
+
+	existingData := []any{}
+	if err := json.NewDecoder(fh).Decode(&existingData); err != nil && err.Error() != "EOF" {
+		logger.Errorf("failed to read existing data in [%s]", fh.Name())
+		return err
+	}
+
+	existingData = append(existingData, data)
+
+	fh.Truncate(0)
+	fh.Seek(0, 0)
+
+	if err := json.NewEncoder(fh).Encode(existingData); err != nil {
+		logger.Errorf("failed to write existing data in [%s]", fh.Name())
+		return err
+	}
+
+	fh.Seek(0, 0)
+
+	return nil
 }

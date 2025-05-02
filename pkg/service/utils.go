@@ -4,7 +4,9 @@ import (
 	"regexp"
 )
 
-func sanitizeBasePathSpecialCase(filename string) string {
+func sanitizeBasePathSpecialCase(filename string) (string, bool) {
 	re := regexp.MustCompile(`[/]`)
-	return re.ReplaceAllString(filename, "-")
+	matched := re.MatchString(filename)
+	sanitize := re.ReplaceAllString(filename, "-")
+	return sanitize, matched
 }

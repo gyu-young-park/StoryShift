@@ -53,7 +53,8 @@ func setZapConfig(c config.LogConfigModel) zap.Config {
 		EncodeCaller:   zapcore.ShortCallerEncoder,     // Short caller (file and line)
 	}
 
-	logLevel := zap.NewAtomicLevelAt(zap.InfoLevel)
+	zapLogLevel := convertLogLevelToZapLogLevel(loggerLevel(c.Level))
+	logLevel := zap.NewAtomicLevelAt(zapLogLevel)
 
 	return zap.Config{
 		Level:            logLevel,
@@ -65,7 +66,7 @@ func setZapConfig(c config.LogConfigModel) zap.Config {
 	}
 }
 
-func (z *zapLoggerImpl) SetLevel(level loggerLevel) error {
+func convertLogLevelToZapLogLevel(level loggerLevel) zapcore.Level {
 	logLevelMapper := map[loggerLevel]zapcore.Level{
 		LoggerLevelEnum.INFO:  zapcore.InfoLevel,
 		LoggerLevelEnum.DEBUG: zapcore.DebugLevel,
@@ -75,10 +76,15 @@ func (z *zapLoggerImpl) SetLevel(level loggerLevel) error {
 
 	zapLoggerLevel, ok := logLevelMapper[level]
 	if !ok {
-		return fmt.Errorf("failed to change log level to: %s", level)
+		panic(fmt.Sprintf("failed to change log level to: %s"))
 	}
 
-	z.level.SetLevel(zapLoggerLevel)
+	return zapLoggerLevel
+}
+
+func (z *zapLoggerImpl) SetLevel(level loggerLevel) error {
+	zapLogLevel := convertLogLevelToZapLogLevel(level)
+	z.level.SetLevel(zapLogLevel)
 	return nil
 }
 
