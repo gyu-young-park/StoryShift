@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/gyu-young-park/VelogStoryShift/internal/config"
-	"github.com/gyu-young-park/VelogStoryShift/pkg/file"
-	"github.com/gyu-young-park/VelogStoryShift/pkg/velog"
+	"github.com/gyu-young-park/StoryShift/internal/config"
+	"github.com/gyu-young-park/StoryShift/pkg/file"
+	"github.com/gyu-young-park/StoryShift/pkg/log"
+	"github.com/gyu-young-park/StoryShift/pkg/velog"
 )
 
 func GetPost(username, urlSlug string) (velog.VelogPost, error) {
@@ -59,6 +60,7 @@ func FetchVelogPostZip(username, postId string) (closeFunc, string, error) {
 }
 
 func FetchAllVelogPostsZip(username string) (closeFunc, string, error) {
+	logger := log.GetLogger()
 	velogApi := velog.NewVelogAPI(config.Manager.VelogConfig.URL, username)
 
 	fileHandler := file.NewFileHandler()
@@ -86,14 +88,14 @@ func FetchAllVelogPostsZip(username string) (closeFunc, string, error) {
 
 			f, err := fileHandler.CreateFile(file.File{
 				FileMeta: file.FileMeta{
-					Name:      post.Title,
+					Name:      sanitizeBasePathSpecialCase(post.Title),
 					Extention: "md",
 				},
 				Content: post.Body,
 			})
 
 			if err != nil {
-				return closeFunc, "", err
+				logger.Error(err.Error())
 			}
 
 			fileList = append(fileList, fileHandler.GetFile(f))

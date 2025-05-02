@@ -3,7 +3,7 @@ package velog
 import (
 	"encoding/json"
 
-	"github.com/gyu-young-park/VelogStoryShift/pkg/log"
+	"github.com/gyu-young-park/StoryShift/pkg/log"
 )
 
 var graphQLQuery = graphQLQueryManager{}

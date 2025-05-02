@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	v1controller "github.com/gyu-young-park/VelogStoryShift/pkg/controller/v1"
+	v1controller "github.com/gyu-young-park/StoryShift/pkg/controller/v1"
 )
 
 var (

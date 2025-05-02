@@ -7,7 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/gyu-young-park/VelogStoryShift/pkg/log"
+	"github.com/gyu-young-park/StoryShift/pkg/log"
 )
 
 const (
@@ -51,6 +51,7 @@ func (f *FileHandler) CreateFile(file File) (string, error) {
 
 	tmpFile, err := os.Create(fmt.Sprintf("%s/%s", TEMP_DIR, file.GetFilename()))
 	if err != nil {
+		logger.Errorf("failed to create temp file: %s", file.GetFilename())
 		return "", err
 	}
 
@@ -59,10 +60,12 @@ func (f *FileHandler) CreateFile(file File) (string, error) {
 	logger.Infof("temp file: %s", tmpFile.Name())
 
 	if _, err := tmpFile.WriteString(file.Content); err != nil {
+		logger.Errorf("failed to write content in temp file: %s", file.GetFilename())
 		return "", err
 	}
 
 	if _, err := tmpFile.Seek(0, io.SeekStart); err != nil {
+		logger.Errorf("failed to put file pointer on start point of temp file: %s", file.GetFilename())
 		return "", err
 	}
 

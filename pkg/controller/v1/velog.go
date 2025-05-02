@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 
 	"github.com/gin-gonic/gin"
-	"github.com/gyu-young-park/VelogStoryShift/pkg/log"
-	"github.com/gyu-young-park/VelogStoryShift/pkg/service"
+	"github.com/gyu-young-park/StoryShift/pkg/log"
+	"github.com/gyu-young-park/StoryShift/pkg/service"
 )
 
 type velogController struct {
@@ -89,11 +89,6 @@ func downloadPost(c *gin.Context) {
 	}
 
 	logger.Debugf("Velog username: %s, url_slug: %s", req.Name, req.URLSlug)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
 	closeFunc, zipFilename, err := service.FetchVelogPostZip(req.Name, req.URLSlug)
 	defer closeFunc()
 

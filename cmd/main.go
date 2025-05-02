@@ -1,9 +1,9 @@
 package main
 
 import (
-	"github.com/gyu-young-park/VelogStoryShift/internal/config"
-	"github.com/gyu-young-park/VelogStoryShift/pkg/log"
-	"github.com/gyu-young-park/VelogStoryShift/pkg/server"
+	"github.com/gyu-young-park/StoryShift/internal/config"
+	"github.com/gyu-young-park/StoryShift/pkg/log"
+	"github.com/gyu-young-park/StoryShift/pkg/server"
 
 	"go.uber.org/zap"
 )

@@ -3,7 +3,7 @@ package log
 import (
 	"fmt"
 
-	"github.com/gyu-young-park/VelogStoryShift/internal/config"
+	"github.com/gyu-young-park/StoryShift/internal/config"
 )
 
 var (

@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/gyu-young-park/VelogStoryShift/pkg/log"
+	"github.com/gyu-young-park/StoryShift/pkg/log"
 )
 
 func newDefaultTransport() *defaultTransport {

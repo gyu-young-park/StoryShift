@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 
-	"github.com/gyu-young-park/VelogStoryShift/internal/httpclient"
+	"github.com/gyu-young-park/StoryShift/internal/httpclient"
 )
 
 type VelogAPI struct {
