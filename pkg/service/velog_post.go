@@ -160,7 +160,9 @@ func FetchSelectedVelogPostsZip(username string, urlSlugList []string) (closeFun
 	for _, urlSlug := range urlSlugList {
 		post, err := velogApi.Post(urlSlug)
 
+		// post에 데이터가 없는 경우 체크
 		// 실패해도 계속 다운로드 해야하는 지
+
 		if err != nil {
 			return closeFunc, "", err
 		}
@@ -192,5 +194,5 @@ func FetchSelectedVelogPostsZip(username string, urlSlugList []string) (closeFun
 		return closeFunc, "", err
 	}
 
-	return func() {}, zipFilename, nil
+	return closeFunc, zipFilename, nil
 }

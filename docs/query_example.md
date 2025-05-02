@@ -126,5 +126,10 @@ chappi-velog-posts.zip
 
 - request
 ```sh
+curl -X POST localhost:9596/v1/velog/posts   -H "content-type: application/json"   -d '[{"name": "chappi", "url_slug": "eBPF"},{"name": "chappi", "url_slug": "SQL-재활-훈련-9일차-View와-Having"}]' --output zipfile.zip
+```
 
+- response
+```sh
+zipfile.zip
 ```

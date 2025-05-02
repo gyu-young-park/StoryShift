@@ -130,7 +130,21 @@ func downloadSelectedPosts(c *gin.Context) {
 		return
 	}
 
+	user := ""
+	urlSlugList := []string{}
+	for _, data := range req {
+		user = data.Name
+		urlSlugList = append(urlSlugList, data.URLSlug)
+	}
+
+	closeFunc, zipFilename, err := service.FetchSelectedVelogPostsZip(user, urlSlugList)
+	defer closeFunc()
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
 	// download zip file contains the selected post files
 
-	c.FileAttachment("zipfilename", "zipfilename")
+	c.FileAttachment(zipFilename, filepath.Base(zipFilename))
 }
