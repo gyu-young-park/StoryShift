@@ -67,7 +67,6 @@ type RenamedFileJSON struct {
 func FetchAllVelogPostsZip(username string) (closeFunc, string, error) {
 	logger := log.GetLogger()
 	velogApi := velog.NewVelogAPI(config.Manager.VelogConfig.URL, username)
-
 	fileHandler := file.NewFileHandler()
 
 	closeFunc := func() {
@@ -146,4 +145,52 @@ func FetchAllVelogPostsZip(username string) (closeFunc, string, error) {
 	}
 
 	return closeFunc, zipFilename, nil
+}
+
+func FetchSelectedVelogPostsZip(username string, urlSlugList []string) (closeFunc, string, error) {
+	// logger := log.GetLogger()
+	velogApi := velog.NewVelogAPI(config.Manager.VelogConfig.URL, username)
+	fh := file.NewFileHandler()
+
+	closeFunc := func() {
+		defer fh.Close()
+	}
+
+	fileList := []*os.File{}
+	for _, urlSlug := range urlSlugList {
+		post, err := velogApi.Post(urlSlug)
+
+		// 실패해도 계속 다운로드 해야하는 지
+		if err != nil {
+			return closeFunc, "", err
+		}
+
+		postFilePath, err := fh.CreateFile(file.File{
+			FileMeta: file.FileMeta{
+				Name:      post.Title,
+				Extention: "md",
+			},
+			Content: post.Body,
+		})
+
+		if err != nil {
+			return closeFunc, "", err
+		}
+
+		fileList = append(fileList, fh.GetFile(postFilePath))
+	}
+
+	zipFilename, err := fh.CreateZipFile(file.ZipFile{
+		FileMeta: file.FileMeta{
+			Name:      fmt.Sprintf("%s-velog-posts", username),
+			Extention: "zip",
+		},
+		Files: fileList,
+	})
+
+	if err != nil {
+		return closeFunc, "", err
+	}
+
+	return func() {}, zipFilename, nil
 }

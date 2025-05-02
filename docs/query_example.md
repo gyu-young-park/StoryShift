@@ -121,3 +121,10 @@ http://localhost:9596/v1/velog/posts/download?name=chappi
 ```sh
 chappi-velog-posts.zip
 ```
+
+5. Download some post file
+
+- request
+```sh
+
+```
