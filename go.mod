@@ -4,7 +4,6 @@ go 1.21.0
 
 require (
 	github.com/gin-gonic/gin v1.10.0
-	github.com/gyu-young-park/StoryShift v0.0.0-20250430175702-351b24cceee5
 	github.com/stretchr/testify v1.10.0
 	go.uber.org/zap v1.27.0
 )
