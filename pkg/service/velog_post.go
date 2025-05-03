@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -8,6 +9,7 @@ import (
 	"github.com/gyu-young-park/StoryShift/pkg/file"
 	"github.com/gyu-young-park/StoryShift/pkg/log"
 	"github.com/gyu-young-park/StoryShift/pkg/velog"
+	"github.com/gyu-young-park/StoryShift/pkg/worker"
 )
 
 func GetPost(username, urlSlug string) (velog.VelogPost, error) {
@@ -74,7 +76,6 @@ func FetchAllVelogPostsZip(username string) (closeFunc, string, error) {
 	}
 
 	fileList := []*os.File{}
-	cursor := ""
 
 	renamedFilename, err := fileHandler.CreateFile(file.File{
 		FileMeta: file.FileMeta{
@@ -90,46 +91,39 @@ func FetchAllVelogPostsZip(username string) (closeFunc, string, error) {
 
 	fileList = append(fileList, fileHandler.GetFile(renamedFilename))
 
-	for {
-		posts, err := velogApi.Posts(cursor, 10)
+	ctx := context.Background()
+	defer ctx.Done()
+	wokerManager := worker.NewWorkerManager[string](ctx, fmt.Sprintf("%s-%s", "velog-post-zip", username), 5)
+	defer wokerManager.Close()
+
+	for _, postInfo := range getAllPosts(&velogApi) {
+		post, err := velogApi.Post(postInfo.UrlSlug)
 		if err != nil {
 			return closeFunc, "", err
 		}
 
-		if len(posts) == 0 {
-			break
-		}
-
-		for _, postInfo := range posts {
-			post, err := velogApi.Post(postInfo.UrlSlug)
-			if err != nil {
-				return closeFunc, "", err
-			}
-
-			sanitizedFile, isSanitized := sanitizeBasePathSpecialCase(post.Title)
-			if isSanitized {
-				logger.Debugf("sanitiz file [%s] to [%s]", post.Title, sanitizedFile)
-				err := fileHandler.AppendDataToJsonFile(renamedFilename, RenamedFileJSON{Origin: post.Title, Rename: sanitizedFile})
-				if err != nil {
-					logger.Error(err.Error())
-				}
-			}
-
-			f, err := fileHandler.CreateFile(file.File{
-				FileMeta: file.FileMeta{
-					Name:      sanitizedFile,
-					Extention: "md",
-				},
-				Content: post.Body,
-			})
-
+		sanitizedFile, isSanitized := sanitizeBasePathSpecialCase(post.Title)
+		if isSanitized {
+			logger.Debugf("sanitiz file [%s] to [%s]", post.Title, sanitizedFile)
+			err := fileHandler.AppendDataToJsonFile(renamedFilename, RenamedFileJSON{Origin: post.Title, Rename: sanitizedFile})
 			if err != nil {
 				logger.Error(err.Error())
 			}
-
-			fileList = append(fileList, fileHandler.GetFile(f))
-			cursor = postInfo.ID
 		}
+
+		f, err := fileHandler.CreateFile(file.File{
+			FileMeta: file.FileMeta{
+				Name:      sanitizedFile,
+				Extention: "md",
+			},
+			Content: post.Body,
+		})
+
+		if err != nil {
+			logger.Error(err.Error())
+		}
+
+		fileList = append(fileList, fileHandler.GetFile(f))
 	}
 
 	zipFilename, err := fileHandler.CreateZipFile(file.ZipFile{
@@ -145,6 +139,33 @@ func FetchAllVelogPostsZip(username string) (closeFunc, string, error) {
 	}
 
 	return closeFunc, zipFilename, nil
+}
+
+func getAllPosts(velogApi *velog.VelogAPI) []velog.VelogPostsItem {
+	logger := log.GetLogger()
+	velogPosts := []velog.VelogPostsItem{}
+	cursor := ""
+	for {
+		posts, err := velogApi.Posts(cursor, 50)
+		velogPosts = append(velogPosts, posts...)
+		if err != nil {
+			logger.Errorf("failed to get posts: %s", err)
+			break
+		}
+
+		if len(posts) == 0 {
+			break
+		}
+
+		lastPost := posts[len(posts)-1]
+		post, err := velogApi.Post(lastPost.UrlSlug)
+		if err != nil {
+			logger.Errorf("failed to get post: %s", err)
+			break
+		}
+		cursor = post.ID
+	}
+	return velogPosts
 }
 
 func FetchSelectedVelogPostsZip(username string, urlSlugList []string) (closeFunc, string, error) {
