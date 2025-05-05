@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sync"
 
 	"github.com/gyu-young-park/StoryShift/pkg/log"
 )
@@ -17,15 +18,20 @@ const (
 
 func NewFileHandler() *FileHandler {
 	return &FileHandler{
+		mu:    sync.RWMutex{},
 		files: make(map[string]*os.File),
 	}
 }
 
 type FileHandler struct {
+	mu    sync.RWMutex
 	files map[string]*os.File
 }
 
-func (f *FileHandler) GetFile(filename string) *os.File {
+func (f *FileHandler) GetFileWithLocked(filename string) *os.File {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
 	logger := log.GetLogger()
 	fh, ok := f.files[filename]
 	if !ok {
@@ -35,7 +41,16 @@ func (f *FileHandler) GetFile(filename string) *os.File {
 	return fh
 }
 
+func (f *FileHandler) SetFileWithLocked(filename string, file *os.File) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	f.files[filename] = file
+}
+
 func (f *FileHandler) Close() {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	for _, file := range f.files {
 		os.Remove(file.Name())
 		file.Close()
@@ -56,8 +71,7 @@ func (f *FileHandler) CreateFile(file File) (string, error) {
 		return "", err
 	}
 
-	f.files[tmpFile.Name()] = tmpFile
-
+	f.SetFileWithLocked(tmpFile.Name(), tmpFile)
 	logger.Infof("temp file: %s", tmpFile.Name())
 
 	if _, err := tmpFile.WriteString(file.Content); err != nil {
@@ -86,7 +100,7 @@ func (f *FileHandler) CreateZipFile(zipFileInfo ZipFile) (string, error) {
 		return "", err
 	}
 
-	zipWriter := zip.NewWriter(f.files[zipFile])
+	zipWriter := zip.NewWriter(f.GetFileWithLocked(zipFile))
 	defer zipWriter.Close()
 
 	for _, file := range zipFileInfo.Files {
@@ -131,7 +145,7 @@ func (f *FileHandler) MakeZipFileWithTitle(file File) (string, error) {
 			Extention: "zip",
 		},
 		Files: []*os.File{
-			f.files[titleFile], f.files[contentFile],
+			f.GetFileWithLocked(titleFile), f.GetFileWithLocked(contentFile),
 		},
 	})
 
@@ -145,7 +159,7 @@ func (f *FileHandler) MakeZipFileWithTitle(file File) (string, error) {
 
 func (f *FileHandler) AppendDataToJsonFile(filename string, data any) error {
 	logger := log.GetLogger()
-	fh := f.GetFile(filename)
+	fh := f.GetFileWithLocked(filename)
 	if fh == nil {
 		return fmt.Errorf("can't find file [%s] please create file", filename)
 	}
