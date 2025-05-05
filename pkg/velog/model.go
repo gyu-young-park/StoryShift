@@ -128,3 +128,22 @@ type readPostModel struct {
 		} `json:"post"`
 	} `json:"data"`
 }
+
+type userSeriesListModel struct {
+	Data struct {
+		User struct {
+			ID         string `json:"id"`
+			SeriesList []struct {
+				ID          string      `json:"id"`
+				Name        string      `json:"name"`
+				Description interface{} `json:"description"`
+				URLSlug     string      `json:"url_slug"`
+				Thumbnail   string      `json:"thumbnail"`
+				UpdatedAt   time.Time   `json:"updated_at"`
+				PostsCount  int         `json:"posts_count"`
+				Typename    string      `json:"__typename"`
+			} `json:"series_list"`
+			Typename string `json:"__typename"`
+		} `json:"user"`
+	} `json:"data"`
+}

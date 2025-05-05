@@ -88,3 +88,35 @@ func (v VelogAPI) Post(urlSlug string) (VelogPost, error) {
 
 	return post, nil
 }
+
+func (v VelogAPI) Series(username string) ([]VelogSeriesItem, error) {
+	reqBody := graphQLQuery.userSeriesList(username)
+	resp, err := httpclient.Post(httpclient.PostRequestParam{
+		URL:         v.VelogAPIURL,
+		Body:        bytes.NewBuffer([]byte(reqBody)),
+		ContentType: "application/json",
+	})
+
+	if err != nil {
+		return []VelogSeriesItem{}, err
+	}
+
+	var model userSeriesListModel
+	err = json.Unmarshal(resp, &model)
+	if err != nil {
+		return []VelogSeriesItem{}, err
+	}
+
+	seriesList := []VelogSeriesItem{}
+	for _, series := range model.Data.User.SeriesList {
+		seriesList = append(seriesList, VelogSeriesItem{
+			ID:        series.ID,
+			Name:      series.Name,
+			Count:     series.PostsCount,
+			Thumbnail: series.Thumbnail,
+			UpdatedAt: series.UpdatedAt,
+		})
+	}
+
+	return seriesList, nil
+}

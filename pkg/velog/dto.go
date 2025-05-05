@@ -21,3 +21,11 @@ type VelogPostsItem struct {
 	UrlSlug   string   `json:"url_slug"`
 	Tags      []string `json:"tags"`
 }
+
+type VelogSeriesItem struct {
+	ID        string    `json:"id"`
+	Name      string    `json:"name"`
+	Count     int       `json:"count"`
+	Thumbnail string    `json:"thumbnail"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
