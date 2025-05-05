@@ -27,8 +27,11 @@ func (v *velogController) RegisterAPI(router *gin.RouterGroup) {
 	router.GET("/post", post)
 	router.GET("/post/download", downloadPost)
 	router.GET("/posts", posts)
+	router.POST("/posts/download", downloadSelectedPosts)
 	router.GET("/posts/download", downloadAllPosts)
-	router.POST("/posts", downloadSelectedPosts)
+	router.GET("/series", series)
+	router.GET("/series/download", downloadAllSeries)
+	router.POST("/series/download", downloadSelectedSeries)
 }
 
 func post(c *gin.Context) {
@@ -144,7 +147,17 @@ func downloadSelectedPosts(c *gin.Context) {
 		return
 	}
 
-	// download zip file contains the selected post files
-
 	c.FileAttachment(zipFilename, filepath.Base(zipFilename))
+}
+
+func series(c *gin.Context) {
+	c.String(http.StatusOK, "series")
+}
+
+func downloadAllSeries(c *gin.Context) {
+	c.String(http.StatusOK, "all series")
+}
+
+func downloadSelectedSeries(c *gin.Context) {
+	c.String(http.StatusOK, "all series")
 }
