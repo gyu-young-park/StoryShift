@@ -76,7 +76,7 @@ func convertLogLevelToZapLogLevel(level loggerLevel) zapcore.Level {
 
 	zapLoggerLevel, ok := logLevelMapper[level]
 	if !ok {
-		panic(fmt.Sprintf("failed to change log level to: %s"))
+		panic(fmt.Sprintf("failed to change log level to: %s", level))
 	}
 
 	return zapLoggerLevel

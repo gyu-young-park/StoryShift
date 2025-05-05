@@ -93,13 +93,13 @@ func FetchAllVelogPostsZip(username string) (closeFunc, string, error) {
 	fileList = append(fileList, fileHandler.GetFileWithLocked(renamedFilename))
 
 	ctx, cancel := context.WithCancel(context.Background())
-	workerManager := worker.NewWorkerManager[string, velog.VelogPostsItem](ctx, fmt.Sprintf("%s-%s", "velog-post-zip", username), 5)
+	workerManager := worker.NewWorkerManager[velog.VelogPostsItem, string](ctx, fmt.Sprintf("%s-%s", "velog-post-zip", username), 5)
 	defer workerManager.Close()
 
 	var wg sync.WaitGroup
 	for _, postInfo := range getAllPosts(&velogApi) {
 		wg.Add(1)
-		workerManager.Submit(worker.Task[string, velog.VelogPostsItem]{
+		workerManager.Submit(worker.Task[velog.VelogPostsItem, string]{
 			Name:  fmt.Sprintf("task-%s", postInfo.Title),
 			Param: postInfo,
 			Fn: func(postItem velog.VelogPostsItem) string {
@@ -203,7 +203,6 @@ func FetchSelectedVelogPostsZip(username string, urlSlugList []string) (closeFun
 
 		// post에 데이터가 없는 경우 체크
 		// 실패해도 계속 다운로드 해야하는 지
-
 		if err != nil {
 			return closeFunc, "", err
 		}

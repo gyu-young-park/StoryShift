@@ -8,42 +8,42 @@ import (
 	"github.com/gyu-young-park/StoryShift/pkg/log"
 )
 
-type WorkerManagable[T any, P any] interface {
+type WorkerManagable[P any, R any] interface {
 	Initialize() error
 	Close() error
-	Result() chan []T
-	Submit(task Task[T, P])
+	Result() chan []R
+	Submit(task Task[P, R])
 }
 
-type workerPool[T any, P any] struct {
+type workerPool[P any, R any] struct {
 	maxWorker int
-	taskQueue chan Task[T, P]
+	taskQueue chan Task[P, R]
 }
 
-type WorkerManager[T any, P any] struct {
+type WorkerManager[P any, R any] struct {
 	once        sync.Once
 	Name        string
-	pool        workerPool[T, P]
-	resultQueue chan T
+	pool        workerPool[P, R]
+	resultQueue chan R
 	ctx         context.Context
 }
 
-func NewWorkerManager[T any, P any](ctx context.Context, name string, maxWorker int) *WorkerManager[T, P] {
-	wg := &WorkerManager[T, P]{
+func NewWorkerManager[P any, R any](ctx context.Context, name string, maxWorker int) *WorkerManager[P, R] {
+	wg := &WorkerManager[P, R]{
 		Name: name,
 		once: sync.Once{},
-		pool: workerPool[T, P]{
+		pool: workerPool[P, R]{
 			maxWorker: maxWorker,
-			taskQueue: make(chan Task[T, P], maxWorker),
+			taskQueue: make(chan Task[P, R], maxWorker),
 		},
-		resultQueue: make(chan T, maxWorker),
+		resultQueue: make(chan R, maxWorker),
 		ctx:         ctx,
 	}
 	wg.Initialize()
 	return wg
 }
 
-func (w *WorkerManager[T, P]) Initialize() {
+func (w *WorkerManager[P, R]) Initialize() {
 	for i := 1; i <= w.pool.maxWorker; i++ {
 		go func(workerName string) {
 			logger := log.GetLogger()
@@ -61,7 +61,7 @@ func (w *WorkerManager[T, P]) Initialize() {
 	}
 }
 
-func (w *WorkerManager[T, P]) Close() error {
+func (w *WorkerManager[P, R]) Close() error {
 	w.once.Do(func() {
 		close(w.pool.taskQueue)
 		close(w.resultQueue)
@@ -69,15 +69,15 @@ func (w *WorkerManager[T, P]) Close() error {
 	return nil
 }
 
-func (w *WorkerManager[T, P]) Result() []T {
-	ret := []T{}
+func (w *WorkerManager[P, R]) Result() []R {
+	ret := []R{}
 	for res := range w.resultQueue {
 		ret = append(ret, res)
 	}
 	return ret
 }
 
-func (w *WorkerManager[T, P]) Submit(task Task[T, P]) {
+func (w *WorkerManager[P, R]) Submit(task Task[P, R]) {
 	go func() {
 		w.pool.taskQueue <- task
 	}()

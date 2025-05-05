@@ -1,7 +1,7 @@
 package worker
 
-type Task[T any, P any] struct {
+type Task[P any, R any] struct {
 	Name  string
 	Param P
-	Fn    func(P) T
+	Fn    func(P) R
 }
