@@ -3,8 +3,9 @@ package velog
 type velogOperationEnum string
 
 const (
-	VELOG_OPERATION_POSTS     velogOperationEnum = "Posts"
-	VELOG_OPERATION_READ_POST velogOperationEnum = "ReadPost"
+	VELOG_OPERATION_POSTS            velogOperationEnum = "Posts"
+	VELOG_OPERATION_READ_POST        velogOperationEnum = "ReadPost"
+	VELOG_OPERATION_USER_SERIES_LIST velogOperationEnum = "UserSeriesList"
 )
 
 type velogQueryEnum string
@@ -125,4 +126,21 @@ const (
 			__typename
 		}
 	}`
+
+	VELOG_QUERY_USER_SERIES_LIST velogQueryEnum = `query UserSeriesList($username: String!) {
+			user(username: $username) {
+				id
+				series_list {
+				id
+				name
+				description
+				url_slug
+				thumbnail
+				updated_at
+				posts_count
+				__typename
+				}
+				__typename
+			}
+		}`
 )
