@@ -48,3 +48,10 @@ func (qm graphQLQueryManager) userSeriesList(username string) string {
 		Username: username,
 	})
 }
+
+func (qm graphQLQueryManager) readSeries(username string, urlSlug string) string {
+	return makeGraphQLQuery(VELOG_OPERATION_READ_SERIES, VELOG_QUERY_READ_SERIES, variables{
+		Username: username,
+		UrlSlug:  urlSlug,
+	})
+}

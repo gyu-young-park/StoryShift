@@ -110,8 +110,10 @@ func (v VelogAPI) Series() ([]VelogSeriesItem, error) {
 	seriesList := []VelogSeriesItem{}
 	for _, series := range model.Data.User.SeriesList {
 		seriesList = append(seriesList, VelogSeriesItem{
-			ID:        series.ID,
-			Name:      series.Name,
+			VelogSeriesBase: VelogSeriesBase{
+				ID:   series.ID,
+				Name: series.Name,
+			},
 			URLSlug:   series.URLSlug,
 			Count:     series.PostsCount,
 			Thumbnail: series.Thumbnail,
@@ -120,4 +122,41 @@ func (v VelogAPI) Series() ([]VelogSeriesItem, error) {
 	}
 
 	return seriesList, nil
+}
+
+func (v VelogAPI) ReadSeries(urlSlug string) (VelogReadSeries, error) {
+	reqBody := graphQLQuery.readSeries(v.Username, urlSlug)
+	resp, err := httpclient.Post(httpclient.PostRequestParam{
+		URL:         v.VelogAPIURL,
+		Body:        bytes.NewBuffer([]byte(reqBody)),
+		ContentType: "application/json",
+	})
+
+	if err != nil {
+		return VelogReadSeries{}, err
+	}
+
+	var model readSeriesModel
+	err = json.Unmarshal(resp, &model)
+	if err != nil {
+		return VelogReadSeries{}, err
+	}
+
+	readSeries := VelogReadSeries{
+		VelogSeriesBase: VelogSeriesBase{
+			ID:   model.Data.Series.ID,
+			Name: model.Data.Series.Name,
+		},
+		Posts: []VelogReadSeriesItem{},
+	}
+	for _, post := range model.Data.Series.SeriesPosts {
+		readSeries.Posts = append(readSeries.Posts, VelogReadSeriesItem{
+			Title:     post.Post.Title,
+			URLSlug:   post.Post.URLSlug,
+			CreatedAt: post.Post.ReleasedAt,
+			UpdatedAt: post.Post.UpdatedAt,
+		})
+	}
+
+	return readSeries, nil
 }

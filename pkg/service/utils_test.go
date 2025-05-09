@@ -1,19 +1,17 @@
 package service
 
 import (
-	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
 func TestSanitizeBasePathSpecialCaseWithSuccess(t *testing.T) {
-	assert := assert.New(t)
 	data := "hello world it's '/' test"
 	expect := "hello world it's '-' test"
 
-	data = filepath.Base(data)
 	sanitized, isSanitized := sanitizeBasePathSpecialCase(data)
-	assert.Equal(expect, sanitized)
-	assert.True(isSanitized)
+
+	assert.Equal(t, expect, sanitized)
+	assert.True(t, isSanitized)
 }

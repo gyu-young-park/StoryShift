@@ -6,6 +6,7 @@ const (
 	VELOG_OPERATION_POSTS            velogOperationEnum = "Posts"
 	VELOG_OPERATION_READ_POST        velogOperationEnum = "ReadPost"
 	VELOG_OPERATION_USER_SERIES_LIST velogOperationEnum = "UserSeriesList"
+	VELOG_OPERATION_READ_SERIES      velogOperationEnum = "ReadSeries"
 )
 
 type velogQueryEnum string
@@ -142,5 +143,23 @@ const (
 				}
 				__typename
 			}
+		}`
+
+	VELOG_QUERY_READ_SERIES velogQueryEnum = `query ReadSeries($username: String!, $url_slug: String!) {
+		  series(username: $username, url_slug: $url_slug) {
+			id
+			name
+			description
+			series_posts {
+			  id
+			  post {
+				id
+				title
+				url_slug
+				released_at
+				updated_at
+			  }
+			}
+		  }
 		}`
 )

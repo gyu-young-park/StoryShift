@@ -147,3 +147,23 @@ type userSeriesListModel struct {
 		} `json:"user"`
 	} `json:"data"`
 }
+
+type readSeriesModel struct {
+	Data struct {
+		Series struct {
+			ID          string      `json:"id"`
+			Name        string      `json:"name"`
+			Description interface{} `json:"description"`
+			SeriesPosts []struct {
+				ID   string `json:"id"`
+				Post struct {
+					ID         string    `json:"id"`
+					Title      string    `json:"title"`
+					URLSlug    string    `json:"url_slug"`
+					ReleasedAt time.Time `json:"released_at"`
+					UpdatedAt  time.Time `json:"updated_at"`
+				} `json:"post"`
+			} `json:"series_posts"`
+		} `json:"series"`
+	} `json:"data"`
+}
