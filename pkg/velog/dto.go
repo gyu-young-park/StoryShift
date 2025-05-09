@@ -25,6 +25,7 @@ type VelogPostsItem struct {
 type VelogSeriesItem struct {
 	ID        string    `json:"id"`
 	Name      string    `json:"name"`
+	URLSlug   string    `json:"url_slug"`
 	Count     int       `json:"count"`
 	Thumbnail string    `json:"thumbnail"`
 	UpdatedAt time.Time `json:"updated_at"`

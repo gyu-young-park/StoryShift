@@ -112,6 +112,7 @@ func (v VelogAPI) Series() ([]VelogSeriesItem, error) {
 		seriesList = append(seriesList, VelogSeriesItem{
 			ID:        series.ID,
 			Name:      series.Name,
+			URLSlug:   series.URLSlug,
 			Count:     series.PostsCount,
 			Thumbnail: series.Thumbnail,
 			UpdatedAt: series.UpdatedAt,

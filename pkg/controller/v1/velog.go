@@ -32,6 +32,7 @@ func (v *velogController) RegisterAPI(router *gin.RouterGroup) {
 	router.POST("/:user/posts/download", downloadSelectedPosts)
 	router.GET("/:user/posts/download", downloadAllPosts)
 	router.GET("/:user/series", series)
+	router.GET("/:user/series/:series_id", readSeries)
 	router.GET("/:user/series/download", downloadAllSeries)
 	router.POST("/:user/series/download", downloadSelectedSeries)
 }
@@ -163,7 +164,8 @@ func series(c *gin.Context) {
 	user := c.Param("user")
 	velogApi := velog.NewVelogAPI(config.Manager.VelogConfig.URL, user)
 
-	//user가 없는 경우 검사
+	//TODO: user가 없는 경우 검사
+
 	series, err := velogApi.Series()
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -175,10 +177,21 @@ func series(c *gin.Context) {
 	})
 }
 
+func readSeries(c *gin.Context) {
+	logger := log.GetLogger()
+	user := c.Param("user")
+	seriesId := c.Param("series_id")
+	logger.Infof("[readSeries] user: %v,seriesId: %v", user, seriesId)
+
+	// TODO read series login
+
+	c.String(http.StatusOK, "read series")
+}
+
 func downloadAllSeries(c *gin.Context) {
 	c.String(http.StatusOK, "all series")
 }
 
 func downloadSelectedSeries(c *gin.Context) {
-	c.String(http.StatusOK, "all series")
+	c.String(http.StatusOK, "selected series")
 }
