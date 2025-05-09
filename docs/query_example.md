@@ -2,7 +2,7 @@
 
 - request
 ```sh
-http://localhost:9596/v1/velog/posts?name=chappi&count=10
+http://localhost:9596/v1/velog/chappi/posts?count=10
 ```
 
 - response
@@ -43,7 +43,7 @@ http://localhost:9596/v1/velog/posts?name=chappi&count=10
 
 - request
 ```sh
-http://localhost:9596/v1/velog/posts?name=chappi&count=2&post_id=edcce6f5-581c-464f-a202-21ba6792ae62
+http://localhost:9596/v1/velog/chappi/posts?count=2&post_id=edcce6f5-581c-464f-a202-21ba6792ae62
 ```
 
 - response
@@ -82,7 +82,7 @@ http://localhost:9596/v1/velog/posts?name=chappi&count=2&post_id=edcce6f5-581c-4
 3. Get post information in detail
 - request
 ```sh
-http://localhost:9596/v1/velog/post?name=chappi&url_slug=eBPF
+http://localhost:9596/v1/velog/chappi/post?url_slug=eBPF
 ```
 
 - response
@@ -102,7 +102,7 @@ http://localhost:9596/v1/velog/post?name=chappi&url_slug=eBPF
 
 - request
 ```sh
-http://localhost:9596/v1/velog/post/download?name=chappi&url_slog=eBPF
+curl http://localhost:9596/v1/velog/chappi/post/download?url_slug=eBPF
 ```
 
 - response
@@ -114,7 +114,7 @@ post.zip
 
 - request
 ```sh
-http://localhost:9596/v1/velog/posts/download?name=chappi
+http://localhost:9596/v1/velog/chappi/posts/download
 ```
 
 - response
@@ -126,7 +126,7 @@ chappi-velog-posts.zip
 
 - request
 ```sh
-curl -X POST localhost:9596/v1/velog/posts   -H "content-type: application/json"   -d '[{"name": "chappi", "url_slug": "eBPF"},{"name": "chappi", "url_slug": "SQL-재활-훈련-9일차-View와-Having"}]' --output zipfile.zip
+curl -X POST localhost:9596/v1/velog/chappi/posts/download   -H "content-type: application/json" -d '[{"url_slug": "eBPF"}, {"url_slug": "SQL-재활-훈련-9일차-View와-Having"}]' --output result.zip
 ```
 
 - response

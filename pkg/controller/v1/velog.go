@@ -26,11 +26,11 @@ func (v *velogController) GetAPIGroup() string {
 }
 
 func (v *velogController) RegisterAPI(router *gin.RouterGroup) {
-	router.GET("/post", post)
-	router.GET("/post/download", downloadPost)
-	router.GET("/posts", posts)
-	router.POST("/posts/download", downloadSelectedPosts)
-	router.GET("/posts/download", downloadAllPosts)
+	router.GET("/:user/post", post)
+	router.GET("/:user/post/download", downloadPost)
+	router.GET("/:user/posts", posts)
+	router.POST("/:user/posts/download", downloadSelectedPosts)
+	router.GET("/:user/posts/download", downloadAllPosts)
 	router.GET("/:user/series", series)
 	router.GET("/:user/series/download", downloadAllSeries)
 	router.POST("/:user/series/download", downloadSelectedSeries)
@@ -38,6 +38,7 @@ func (v *velogController) RegisterAPI(router *gin.RouterGroup) {
 
 func post(c *gin.Context) {
 	logger := log.GetLogger()
+	user := c.Param("user")
 	var req VelogPostRequestModel
 	err := c.ShouldBind(&req)
 	if err != nil {
@@ -46,10 +47,10 @@ func post(c *gin.Context) {
 	}
 
 	logger.Debugf("Velog username: %s, url_slug: %s",
-		req.Name,
+		user,
 		req.URLSlug)
 
-	velogPost, err := service.GetPost(req.Name, req.URLSlug)
+	velogPost, err := service.GetPost(user, req.URLSlug)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -62,6 +63,8 @@ func post(c *gin.Context) {
 
 func posts(c *gin.Context) {
 	logger := log.GetLogger()
+	user := c.Param("user")
+
 	var req VelogPostsRequestModel
 	err := c.ShouldBind(&req)
 	if err != nil {
@@ -70,11 +73,11 @@ func posts(c *gin.Context) {
 	}
 
 	logger.Infof("Velog username: %s, post_id: %s, count: %v",
-		req.Name,
+		user,
 		req.PostId,
 		req.Count)
 
-	velogPosts, err := service.GetPosts(req.Name, req.PostId, req.Count)
+	velogPosts, err := service.GetPosts(user, req.PostId, req.Count)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -87,6 +90,8 @@ func posts(c *gin.Context) {
 
 func downloadPost(c *gin.Context) {
 	logger := log.GetLogger()
+	user := c.Param("user")
+
 	var req VelogPostRequestModel
 	err := c.ShouldBind(&req)
 	if err != nil {
@@ -94,8 +99,8 @@ func downloadPost(c *gin.Context) {
 		return
 	}
 
-	logger.Debugf("Velog username: %s, url_slug: %s", req.Name, req.URLSlug)
-	closeFunc, zipFilename, err := service.FetchVelogPostZip(req.Name, req.URLSlug)
+	logger.Debugf("Velog username: %s, url_slug: %s", user, req.URLSlug)
+	closeFunc, zipFilename, err := service.FetchVelogPostZip(user, req.URLSlug)
 	defer closeFunc()
 
 	logger.Infof("get zip file: %s", zipFilename)
@@ -110,14 +115,15 @@ func downloadPost(c *gin.Context) {
 
 func downloadAllPosts(c *gin.Context) {
 	logger := log.GetLogger()
-	var req VelogUserNameReqestModel
-	if err := c.ShouldBind(&req); err != nil {
-		logger.Errorf("client error occureed: %s", err)
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
+	user := c.Param("user")
+	// var req VelogUserNameReqestModel
+	// if err := c.ShouldBind(&req); err != nil {
+	// 	logger.Errorf("client error occureed: %s", err)
+	// 	c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	// 	return
+	// }
 
-	closeFunc, zipFilename, err := service.FetchAllVelogPostsZip(req.Name)
+	closeFunc, zipFilename, err := service.FetchAllVelogPostsZip(user)
 	defer closeFunc()
 	if err != nil {
 		logger.Errorf("server error occureed: %s", err)
@@ -129,16 +135,17 @@ func downloadAllPosts(c *gin.Context) {
 }
 
 func downloadSelectedPosts(c *gin.Context) {
+	logger := log.GetLogger()
+	user := c.Param("user")
 	var req []VelogPostRequestModel
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	logger.Infof("download selected posts, user: %v", user)
 
-	user := ""
 	urlSlugList := []string{}
 	for _, data := range req {
-		user = data.Name
 		urlSlugList = append(urlSlugList, data.URLSlug)
 	}
 
