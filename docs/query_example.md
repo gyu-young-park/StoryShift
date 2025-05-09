@@ -133,3 +133,47 @@ curl -X POST localhost:9596/v1/velog/posts   -H "content-type: application/json"
 ```sh
 zipfile.zip
 ```
+
+6. get the all series of user
+
+- request
+```sh
+curl localhost:9596/v1/velog/chappi/series
+```
+
+- response
+```json
+{
+  "data": [
+    {
+      "id": "b9a6f3ba-31ec-48c1-b8a8-f86badbcfc25",
+      "name": "eBPF",
+      "count": 3,
+      "thumbnail": "https://velog.velcdn.com/images/chappi/post/9eeb7980-69a2-43a8-a578-dad3b7e620f7/image.png",
+      "updated_at": "2025-04-24T13:15:38.983Z"
+    },
+    {
+      "id": "d86249cb-ab48-4127-b705-a5d158b02d5e",
+      "name": "sql",
+      "count": 9,
+      "thumbnail": "",
+      "updated_at": "2025-04-15T04:06:17.382Z"
+    },
+    {
+      "id": "095574fd-fc24-490a-afdc-014076c27662",
+      "name": "elasticsearch",
+      "count": 9,
+      "thumbnail": "",
+      "updated_at": "2025-04-04T04:49:03.154Z"
+    },
+    ...
+    {
+      "id": "4c86cc6e-66fa-4dcc-b5e3-45b969ec6b0e",
+      "name": "알고리즘",
+      "count": 11,
+      "thumbnail": "https://images.velog.io/images/chappi/post/a23b8edc-3e5a-4589-82f7-1e80727fb14f/멈춰!.jpg",
+      "updated_at": "2021-04-28T05:26:25.247Z"
+    }
+  ]
+}
+```

@@ -89,8 +89,8 @@ func (v VelogAPI) Post(urlSlug string) (VelogPost, error) {
 	return post, nil
 }
 
-func (v VelogAPI) Series(username string) ([]VelogSeriesItem, error) {
-	reqBody := graphQLQuery.userSeriesList(username)
+func (v VelogAPI) Series() ([]VelogSeriesItem, error) {
+	reqBody := graphQLQuery.userSeriesList(v.Username)
 	resp, err := httpclient.Post(httpclient.PostRequestParam{
 		URL:         v.VelogAPIURL,
 		Body:        bytes.NewBuffer([]byte(reqBody)),

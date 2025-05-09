@@ -5,8 +5,10 @@ import (
 	"path/filepath"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gyu-young-park/StoryShift/internal/config"
 	"github.com/gyu-young-park/StoryShift/pkg/log"
 	"github.com/gyu-young-park/StoryShift/pkg/service"
+	"github.com/gyu-young-park/StoryShift/pkg/velog"
 )
 
 type velogController struct {
@@ -29,9 +31,9 @@ func (v *velogController) RegisterAPI(router *gin.RouterGroup) {
 	router.GET("/posts", posts)
 	router.POST("/posts/download", downloadSelectedPosts)
 	router.GET("/posts/download", downloadAllPosts)
-	router.GET("/series", series)
-	router.GET("/series/download", downloadAllSeries)
-	router.POST("/series/download", downloadSelectedSeries)
+	router.GET("/:user/series", series)
+	router.GET("/:user/series/download", downloadAllSeries)
+	router.POST("/:user/series/download", downloadSelectedSeries)
 }
 
 func post(c *gin.Context) {
@@ -151,7 +153,19 @@ func downloadSelectedPosts(c *gin.Context) {
 }
 
 func series(c *gin.Context) {
-	c.String(http.StatusOK, "series")
+	user := c.Param("user")
+	velogApi := velog.NewVelogAPI(config.Manager.VelogConfig.URL, user)
+
+	//user가 없는 경우 검사
+	series, err := velogApi.Series()
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"data": series,
+	})
 }
 
 func downloadAllSeries(c *gin.Context) {
