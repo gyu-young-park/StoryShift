@@ -35,7 +35,7 @@ type VelogSeriesItem struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
-type VelogReadSeriesItem struct {
+type velogReadSeriesItem struct {
 	Title     string    `json:"title"`
 	URLSlug   string    `json:"url_slug"`
 	CreatedAt time.Time `json:"created_at"`
@@ -44,5 +44,5 @@ type VelogReadSeriesItem struct {
 
 type VelogReadSeries struct {
 	VelogSeriesBase
-	Posts []VelogReadSeriesItem `json:"posts"`
+	Posts []velogReadSeriesItem `json:"posts"`
 }

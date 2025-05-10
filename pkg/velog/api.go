@@ -147,10 +147,10 @@ func (v VelogAPI) ReadSeries(urlSlug string) (VelogReadSeries, error) {
 			ID:   model.Data.Series.ID,
 			Name: model.Data.Series.Name,
 		},
-		Posts: []VelogReadSeriesItem{},
+		Posts: []velogReadSeriesItem{},
 	}
 	for _, post := range model.Data.Series.SeriesPosts {
-		readSeries.Posts = append(readSeries.Posts, VelogReadSeriesItem{
+		readSeries.Posts = append(readSeries.Posts, velogReadSeriesItem{
 			Title:     post.Post.Title,
 			URLSlug:   post.Post.URLSlug,
 			CreatedAt: post.Post.ReleasedAt,

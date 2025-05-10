@@ -5,10 +5,8 @@ import (
 	"path/filepath"
 
 	"github.com/gin-gonic/gin"
-	"github.com/gyu-young-park/StoryShift/internal/config"
 	"github.com/gyu-young-park/StoryShift/pkg/log"
 	"github.com/gyu-young-park/StoryShift/pkg/service"
-	"github.com/gyu-young-park/StoryShift/pkg/velog"
 )
 
 type velogController struct {
@@ -26,18 +24,18 @@ func (v *velogController) GetAPIGroup() string {
 }
 
 func (v *velogController) RegisterAPI(router *gin.RouterGroup) {
-	router.GET("/:user/post", post)
+	router.GET("/:user/post", getPost)
 	router.GET("/:user/post/download", downloadPost)
-	router.GET("/:user/posts", posts)
+	router.GET("/:user/posts", getPosts)
 	router.POST("/:user/posts/download", downloadSelectedPosts)
 	router.GET("/:user/posts/download", downloadAllPosts)
-	router.GET("/:user/series", series)
-	router.GET("/:user/series/:series_id", readSeries)
+	router.GET("/:user/series", getSeries)
+	router.GET("/:user/series/:url_slug", getPostsInSeries)
 	router.GET("/:user/series/download", downloadAllSeries)
 	router.POST("/:user/series/download", downloadSelectedSeries)
 }
 
-func post(c *gin.Context) {
+func getPost(c *gin.Context) {
 	logger := log.GetLogger()
 	user := c.Param("user")
 	var req VelogPostRequestModel
@@ -62,7 +60,7 @@ func post(c *gin.Context) {
 	})
 }
 
-func posts(c *gin.Context) {
+func getPosts(c *gin.Context) {
 	logger := log.GetLogger()
 	user := c.Param("user")
 
@@ -160,13 +158,9 @@ func downloadSelectedPosts(c *gin.Context) {
 	c.FileAttachment(zipFilename, filepath.Base(zipFilename))
 }
 
-func series(c *gin.Context) {
+func getSeries(c *gin.Context) {
 	user := c.Param("user")
-	velogApi := velog.NewVelogAPI(config.Manager.VelogConfig.URL, user)
-
-	//TODO: user가 없는 경우 검사
-
-	series, err := velogApi.Series()
+	series, err := service.GetSeries(user)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -177,15 +171,20 @@ func series(c *gin.Context) {
 	})
 }
 
-func readSeries(c *gin.Context) {
+func getPostsInSeries(c *gin.Context) {
 	logger := log.GetLogger()
 	user := c.Param("user")
-	seriesId := c.Param("series_id")
-	logger.Infof("[readSeries] user: %v,seriesId: %v", user, seriesId)
+	seriesUrlSlug := c.Param("url_slug")
+	logger.Infof("[readSeries] user: %v,seriesUrlSlug: %v", user, seriesUrlSlug)
 
 	// TODO read series login
+	postsInSeries, err := service.GetPostsInSereis(user, seriesUrlSlug)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"err": err})
+		return
+	}
 
-	c.String(http.StatusOK, "read series")
+	c.JSON(http.StatusOK, postsInSeries)
 }
 
 func downloadAllSeries(c *gin.Context) {

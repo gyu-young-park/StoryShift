@@ -177,3 +177,15 @@ curl localhost:9596/v1/velog/chappi/series
   ]
 }
 ```
+
+7. read series in detail
+
+- request
+```sh
+curl localhost:9596/v1/velog/chappi/series/b9a6f3ba-31ec-48c1-b8a8-f86badbcfc25
+```
+
+- response
+```json
+
+```
