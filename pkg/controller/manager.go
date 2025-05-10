@@ -9,7 +9,7 @@ import (
 
 var (
 	v1Controllers = []controller{
-		v1controller.NewhealthController("/"),
+		v1controller.NewStatueController("/status"),
 		v1controller.NewVelogController("/velog"),
 	}
 )
@@ -32,11 +32,19 @@ func newControllerManager() *controllerManager {
 		engine: gin.Default(),
 	}
 
+	apiGroupList := []string{}
 	v1groupRouter := c.engine.Group("/v1")
 	for _, apiController := range v1Controllers {
 		group := v1groupRouter.Group(apiController.GetAPIGroup())
 		apiController.RegisterAPI(group)
+		apiGroupList = append(apiGroupList, group.BasePath())
 	}
+
+	c.engine.GET("/", func(ctx *gin.Context) {
+		ctx.JSON(http.StatusOK, gin.H{
+			"api": apiGroupList,
+		})
+	})
 
 	return &c
 }
