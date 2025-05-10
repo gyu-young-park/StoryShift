@@ -8,7 +8,6 @@ import (
 func GetSeries(username string) ([]velog.VelogSeriesItem, error) {
 	velogApi := velog.NewVelogAPI(config.Manager.VelogConfig.URL, username)
 
-	//TODO: user가 없는 경우 검사
 	seriesList, err := velogApi.Series()
 	if err != nil {
 		return []velog.VelogSeriesItem{}, err

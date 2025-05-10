@@ -26,25 +26,28 @@ func Get(param GetRequestParam) (ResponseParam, error) {
 	var sb strings.Builder
 	sb.WriteString(param.URL)
 
-	isFirst := true
-	for k, v := range param.Query {
-		if isFirst {
-			sb.WriteString("?")
-			isFirst = false
-		} else {
-			sb.WriteString("&")
-		}
+	if param.Query != nil {
+		isFirst := true
+		for k, v := range param.Query {
+			if isFirst {
+				sb.WriteString("?")
+				isFirst = false
+			} else {
+				sb.WriteString("&")
+			}
 
-		sb.WriteString(k)
-		sb.WriteString("=")
-		sb.WriteString(v)
+			sb.WriteString(k)
+			sb.WriteString("=")
+			sb.WriteString(v)
+		}
 	}
 
 	url := sb.String()
 	resp, err := defaultHTTPClient.Get(url)
 	if err != nil {
-		return ResponseParam{StatusCode: resp.StatusCode}, err
+		return ResponseParam{}, err
 	}
+
 	defer resp.Body.Close()
 
 	respBody, err := io.ReadAll(resp.Body)
@@ -58,7 +61,7 @@ func Get(param GetRequestParam) (ResponseParam, error) {
 func Post(param PostRequestParam) (ResponseParam, error) {
 	resp, err := defaultHTTPClient.Post(param.URL, param.ContentType, param.Body)
 	if err != nil {
-		return ResponseParam{StatusCode: resp.StatusCode}, err
+		return ResponseParam{}, err
 	}
 
 	defer resp.Body.Close()
