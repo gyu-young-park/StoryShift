@@ -33,7 +33,7 @@ func (v VelogAPI) Posts(cursor string, limit int) ([]VelogPostsItem, error) {
 	}
 
 	var model postsModel
-	err = json.Unmarshal(resp, &model)
+	err = json.Unmarshal(resp.Body, &model)
 	if err != nil {
 		return []VelogPostsItem{}, err
 	}
@@ -71,7 +71,7 @@ func (v VelogAPI) Post(urlSlug string) (VelogPost, error) {
 	}
 
 	var model readPostModel
-	err = json.Unmarshal(resp, &model)
+	err = json.Unmarshal(resp.Body, &model)
 	if err != nil {
 		return VelogPost{}, err
 	}
@@ -102,7 +102,7 @@ func (v VelogAPI) Series() ([]VelogSeriesItem, error) {
 	}
 
 	var model userSeriesListModel
-	err = json.Unmarshal(resp, &model)
+	err = json.Unmarshal(resp.Body, &model)
 	if err != nil {
 		return []VelogSeriesItem{}, err
 	}
@@ -137,7 +137,7 @@ func (v VelogAPI) ReadSeries(urlSlug string) (VelogReadSeries, error) {
 	}
 
 	var model readSeriesModel
-	err = json.Unmarshal(resp, &model)
+	err = json.Unmarshal(resp.Body, &model)
 	if err != nil {
 		return VelogReadSeries{}, err
 	}

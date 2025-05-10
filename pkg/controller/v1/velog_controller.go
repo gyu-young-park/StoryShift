@@ -114,12 +114,6 @@ func downloadPost(c *gin.Context) {
 func downloadAllPosts(c *gin.Context) {
 	logger := log.GetLogger()
 	user := c.Param("user")
-	// var req VelogUserNameReqestModel
-	// if err := c.ShouldBind(&req); err != nil {
-	// 	logger.Errorf("client error occureed: %s", err)
-	// 	c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-	// 	return
-	// }
 
 	closeFunc, zipFilename, err := service.FetchAllVelogPostsZip(user)
 	defer closeFunc()
@@ -176,7 +170,6 @@ func getPostsInSeries(c *gin.Context) {
 	seriesUrlSlug := c.Param("url_slug")
 	logger.Infof("[readSeries] user: %v,seriesUrlSlug: %v", user, seriesUrlSlug)
 
-	// TODO read series login
 	postsInSeries, err := service.GetPostsInSereis(user, seriesUrlSlug)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"err": err})
