@@ -24,7 +24,7 @@ func (v *velogController) GetAPIGroup() string {
 }
 
 func (v *velogController) RegisterAPI(router *gin.RouterGroup) {
-	router.GET("/:user/post", getPost)
+	router.GET("/:user/post/:url_slug", getPost)
 	router.GET("/:user/post/download", downloadPost)
 	router.GET("/:user/posts", getPosts)
 	router.POST("/:user/posts/download", downloadSelectedPosts)
@@ -38,18 +38,13 @@ func (v *velogController) RegisterAPI(router *gin.RouterGroup) {
 func getPost(c *gin.Context) {
 	logger := log.GetLogger()
 	user := c.Param("user")
-	var req VelogPostRequestModel
-	err := c.ShouldBind(&req)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
+	urlSlug := c.Param("url_slug")
 
 	logger.Debugf("Velog username: %s, url_slug: %s",
 		user,
-		req.URLSlug)
+		urlSlug)
 
-	velogPost, err := service.GetPost(user, req.URLSlug)
+	velogPost, err := service.GetPost(user, urlSlug)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -69,6 +64,10 @@ func getPosts(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
+	}
+
+	if req.Count == 0 {
+		req.Count = 10
 	}
 
 	logger.Infof("Velog username: %s, post_id: %s, count: %v",
