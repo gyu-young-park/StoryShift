@@ -178,14 +178,27 @@ curl localhost:9596/v1/velog/chappi/series
 }
 ```
 
-7. read series in detail
+7. get all post in the series user selected 
 
 - request
 ```sh
-curl localhost:9596/v1/velog/chappi/series/b9a6f3ba-31ec-48c1-b8a8-f86badbcfc25
+curl http://localhost:9596/v1/velog/chappi/series/eBPF
 ```
 
 - response
 ```json
-
+{
+  "id": "b9a6f3ba-31ec-48c1-b8a8-f86badbcfc25",
+  "name": "eBPF",
+  "posts": [
+    {
+      "id": "d0295770-ea06-48a8-bc39-2f8f02182f4c",
+      "title": "eBPF를 배워보자 1일차 - eBPF란?",
+      "created_at": "2025-04-22T12:29:46.672Z",
+      "updated_at": "2025-05-10T10:08:32.805Z",
+      "body": "# What is eBPF, and why is it important\neBPF는 custom code를 작성하여 kernel에 동적으로 적재하여 kernel의 동작을 변경할 수 있다. 이를 통해서 좋은 성능의 네트워킹, observability, security tool 등이 가능하다. 또한, eBPF로 이러한 추가 기능을 제공하는데에 있어서 기존 application은 어떠한 동작의 변경이 없어도 된다는 장점이 있다. \n\n몇가지 eBPF에서 제공하는 것들을 정리하면 다음과 같다.\n1. 다각도의 성능 tracing 제공\n2. 내장된 시각화와 함께 높은 성능의 네트워킹 제공\n3. 잘못된 activity에 대한 감지 또는 수정 제공\n\n## eBPF(The Berkeley Packet Filter)\n`eBPF`의 뿌리는 BSD Packet Filter로부터 시작된다. 이는 1993년에 쓰여진 논문으로, pseudomahcine으로 작성된 filter에 대하여 논의하고 있는데, filter는 network packet을 거부하거나 수용할지 말지에 대한 program이다. 이 pseudomachine program은 BPF 명령어셋으로 쓰여졌는데,
+      ..."
+    },
+  ]
+}
 ```
