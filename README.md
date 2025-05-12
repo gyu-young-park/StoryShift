@@ -22,13 +22,21 @@ Even when switching blog platforms, you can preserve your content in clean, read
 ---
 
 ## 🔧 Usage
-TODO
 
+1. Start a server by script
 ```bash
-
+./script/start.sh
 ```
 
-The resulting markdown files will be saved under the `output/` directory.
+2. Start a server by go
+```bash
+go run ./...
+```
+
+3. run test
+```bash
+go test ./... -v
+```
 
 ---
 
