@@ -7,6 +7,7 @@ const (
 	VELOG_OPERATION_READ_POST        velogOperationEnum = "ReadPost"
 	VELOG_OPERATION_USER_SERIES_LIST velogOperationEnum = "UserSeriesList"
 	VELOG_OPERATION_READ_SERIES      velogOperationEnum = "ReadSeries"
+	VELOG_OPERATION_USER_PROFILE     velogOperationEnum = "UserProfile"
 )
 
 type velogQueryEnum string
@@ -161,5 +162,17 @@ const (
 			  }
 			}
 		  }
+		}`
+
+	VELOG_QUERY_USER_PROFILE velogQueryEnum = `query UserProfile($username: String!) {
+			user(username: $username) {
+				id
+				username
+				profile {
+				display_name
+				thumbnail
+				short_bio
+				}
+			}
 		}`
 )

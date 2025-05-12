@@ -55,3 +55,9 @@ func (qm graphQLQueryManager) readSeries(username string, urlSlug string) string
 		UrlSlug:  urlSlug,
 	})
 }
+
+func (qm graphQLQueryManager) userProfile(username string) string {
+	return makeGraphQLQuery(VELOG_OPERATION_USER_PROFILE, VELOG_QUERY_USER_PROFILE, variables{
+		Username: username,
+	})
+}

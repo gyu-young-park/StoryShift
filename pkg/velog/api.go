@@ -160,3 +160,8 @@ func (v VelogAPI) ReadSeries(urlSlug string) (VelogReadSeries, error) {
 
 	return readSeries, nil
 }
+
+func (v VelogAPI) UserProfile() (VelogUserProfile, error) {
+	// TODO
+	return VelogUserProfile{}, nil
+}

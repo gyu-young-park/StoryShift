@@ -25,6 +25,7 @@ func (v *velogController) GetAPIGroup() string {
 
 func (v *velogController) RegisterAPI(router *gin.RouterGroup) {
 	router.Use(validateVelogUser())
+	router.GET("/:user", getUserProfile)
 	router.GET("/:user/post/:url_slug", getPost)
 	router.GET("/:user/post/download", downloadPost)
 	router.GET("/:user/posts", getPosts)
@@ -186,4 +187,8 @@ func downloadAllSeries(c *gin.Context) {
 
 func downloadSelectedSeries(c *gin.Context) {
 	c.String(http.StatusOK, "selected series")
+}
+
+func getUserProfile(c *gin.Context) {
+	c.String(http.StatusOK, "user profile")
 }

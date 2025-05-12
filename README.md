@@ -32,9 +32,11 @@ The resulting markdown files will be saved under the `output/` directory.
 
 ---
 
-## 📁 Example
+# 📘 Velog REST API
 
-TODO
+Velog 데이터를 REST 방식으로 제공하는 API입니다.
+
+## ✅ Base URL
 
 ---
 

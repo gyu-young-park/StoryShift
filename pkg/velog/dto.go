@@ -46,3 +46,11 @@ type VelogReadSeries struct {
 	VelogSeriesBase
 	Posts []velogReadSeriesItem `json:"posts"`
 }
+
+type VelogUserProfile struct {
+	Id        string `json:"id"`
+	Username  string `json:"username"`
+	Describe  string `json:"describe"`
+	Thumbnail string `json:"thumbnail"`
+	Bio       string `json:"Bio"`
+}

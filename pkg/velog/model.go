@@ -167,3 +167,17 @@ type readSeriesModel struct {
 		} `json:"series"`
 	} `json:"data"`
 }
+
+type userProfileModel struct {
+	Data struct {
+		User struct {
+			ID       string `json:"id"`
+			Username string `json:"username"`
+			Profile  struct {
+				DisplayName string `json:"display_name"`
+				Thumbnail   string `json:"thumbnail"`
+				ShortBio    string `json:"short_bio"`
+			} `json:"profile"`
+		} `json:"user"`
+	} `json:"data"`
+}
