@@ -28,5 +28,8 @@ func (y yamlParser) parse(configModel *ConfigModel) {
 		panic("failed to read config file")
 	}
 
-	yaml.Unmarshal(data, configModel)
+	err = yaml.Unmarshal(data, configModel)
+	if err != nil {
+		panic("failed to unmarshal yaml config data")
+	}
 }

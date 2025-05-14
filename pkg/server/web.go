@@ -16,6 +16,7 @@ func Start(c config.ConfigModel) {
 		Addr:    fmt.Sprintf(":%s", config.Manager.AppConfig.Server.Port),
 		Handler: controller.Manager.GetHTTPHandler(),
 	}
+	logger.Infof("Server started, port: %v", config.Manager.AppConfig.Server.Port)
 
 	if err := s.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		logger.Errorf("listen: %s\n", err)

@@ -1,18 +1,21 @@
 package config
 
 import (
-	"flag"
+	"fmt"
+	"os"
 	"path/filepath"
 )
 
 var Manager = newConfigManager(injectConfigParser())
 
 func injectConfigParser() ConfigParser {
-	configPath := flag.String("config", "", "path to config file")
-	extension := filepath.Ext(*configPath)
+	configPath := os.Getenv("STORY_SHIFT_CONFIG_FILE")
+	extension := filepath.Ext(configPath)
+	fmt.Println("Config file path: " + configPath)
+
 	parserMapper := map[string]ConfigParser{
-		"yaml": newYamlParser(*configPath),
-		"env":  newEnvParser(),
+		".yaml": newYamlParser(configPath),
+		".env":  newEnvParser(),
 	}
 
 	parser, ok := parserMapper[extension]
