@@ -3,7 +3,7 @@ app:
     library: zap
     level: DEBUG
   server:
-    port: "9597"
+    port: "9596"
 
 velog:
   url: "https://v2.velog.io/graphql"

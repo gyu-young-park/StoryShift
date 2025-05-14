@@ -6,10 +6,14 @@ import (
 	"path/filepath"
 )
 
+const (
+	STORY_SHIFT_CONFIG_FILE = "STORY_SHIFT_CONFIG_FILE"
+)
+
 var Manager = newConfigManager(injectConfigParser())
 
 func injectConfigParser() ConfigParser {
-	configPath := os.Getenv("STORY_SHIFT_CONFIG_FILE")
+	configPath := os.Getenv(STORY_SHIFT_CONFIG_FILE)
 	extension := filepath.Ext(configPath)
 	fmt.Println("Config file path: " + configPath)
 

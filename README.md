@@ -22,7 +22,6 @@ Even when switching blog platforms, you can preserve your content in clean, read
 ---
 
 ## 🔧 Usage
-
 1. Start a server by script
 ```bash
 ./script/start.sh
@@ -58,13 +57,18 @@ Velog 데이터를 REST 방식으로 제공하는 API입니다.
 
 
 
-## ✅ Base URL
-
+## ✅ Example
 ---
 
-## 🛠 Configuration
 
-TODO
+## 🛠 Configuration
+You can set config file path by using 'STORY_SHIFT_CONFIG_FILE' env
+```
+export STORY_SHIFT_CONFIG_FILE=config.yaml
+```
+
+We now support yaml, env configuration data, please check the config directory
+
 
 ---
 
@@ -73,6 +77,3 @@ TODO
 Feel free to open issues, suggest features, or submit pull requests!
 
 ---
-
-## 📄 License
-TODO
