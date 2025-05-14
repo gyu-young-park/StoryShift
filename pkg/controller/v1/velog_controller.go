@@ -33,6 +33,7 @@ func (v *velogController) RegisterAPI(router *gin.RouterGroup) {
 	router.GET("/:user/posts/download", downloadAllPosts)
 	router.GET("/:user/series", getSeries)
 	router.GET("/:user/series/:url_slug", getPostsInSeries)
+	router.GET("/:user/series/:url_slug/download", downloadSeries)
 	router.GET("/:user/series/download", downloadAllSeries)
 	router.POST("/:user/series/download", downloadSelectedSeries)
 }
@@ -179,6 +180,20 @@ func getPostsInSeries(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, postsInSeries)
+}
+
+func downloadSeries(c *gin.Context) {
+	user := c.Param("user")
+	seriesUrlSlug := c.Param("url_slug")
+
+	closeFunc, zipFilename, err := service.FetchSeriesZip(user, seriesUrlSlug)
+	defer closeFunc()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"err": err})
+		return
+	}
+
+	c.FileAttachment(zipFilename, filepath.Base(zipFilename))
 }
 
 func downloadAllSeries(c *gin.Context) {

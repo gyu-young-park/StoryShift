@@ -202,3 +202,15 @@ curl http://localhost:9596/v1/velog/chappi/series/eBPF
   ]
 }
 ```
+
+8. get all posts in series as zip file 
+
+- request
+```sh
+http://localhost:9596/v1/velog/chappi/series/eBPF/dwonload
+```
+
+- response
+```sh
+eBPF.zip
+```

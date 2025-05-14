@@ -112,7 +112,7 @@ func FetchAllVelogPostsZip(username string) (closeFunc, string, error) {
 
 				sanitizedFile, isSanitized := sanitizeBasePathSpecialCase(post.Title)
 				if isSanitized {
-					logger.Debugf("sanitiz file [%s] to [%s]", post.Title, sanitizedFile)
+					logger.Debugf("sanitized file [%s] to [%s]", post.Title, sanitizedFile)
 					err := fileHandler.AppendDataToJsonFile(renamedFilename, RenamedFileJSON{Origin: post.Title, Rename: sanitizedFile})
 					if err != nil {
 						logger.Error(err.Error())

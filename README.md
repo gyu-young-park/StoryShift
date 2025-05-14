@@ -54,6 +54,8 @@ Velog 데이터를 REST 방식으로 제공하는 API입니다.
 | **6. Download some post files**                 | `curl -X POST localhost:9596/v1/velog/{username}/posts/download -H "content-type: application/json" -d '[{"url_slug": "eBPF"}, {"url_slug": "SQL-재활-훈련-9일차-View와-Having"}]' --output result.zip` | POST             | Payload: `[{"url_slug": "eBPF"}, {"url_slug": "SQL-재활-훈련-9일차-View와-Having"}]`                                      |
 | **7. Get all series of user**                   | `curl localhost:9596/v1/velog/{username}/series`                                                          | GET              | No payload                                                                                                               |
 | **8. Get all posts in selected series**         | `curl http://localhost:9596/v1/velog/{username}/series/{series_slug}`                                              | GET              | No payload                                                                                                               |
+| **9. Get all posts in series as zip file**     | `curl http://localhost:9596/v1/velog/{username}/series/{series_slug}/download`                                              | GET              | No payload                                                                                                               |
+
 
 
 ## ✅ Base URL
