@@ -1,6 +1,7 @@
 package service
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/gyu-young-park/StoryShift/internal/config"
@@ -41,15 +42,10 @@ func GetPostsInSereis(username, seriesUrlSlug string) (PostsInSeriesModel, error
 	return postInSeriesModel, nil
 }
 
-func FetchSeriesZip(username string, seriesUrlSlug string) (closeFunc, string, error) {
-	fileHandler := file.NewFileHandler()
-	closeFunc := func() {
-		defer fileHandler.Close()
-	}
-
+func fetchSeries(fileHandler *file.FileHandler, username string, seriesUrlSlug string) ([]*os.File, error) {
 	postsInSeriesModel, err := GetPostsInSereis(username, seriesUrlSlug)
 	if err != nil {
-		return closeFunc, "", err
+		return nil, err
 	}
 
 	fileList := []*os.File{}
@@ -63,17 +59,31 @@ func FetchSeriesZip(username string, seriesUrlSlug string) (closeFunc, string, e
 		})
 
 		if err != nil {
-			return closeFunc, "", err
+			return nil, err
 		}
 		fileList = append(fileList, fileHandler.GetFileWithLocked(postFilePath))
 	}
 
+	return fileList, nil
+}
+
+func FetchSeriesZip(username string, seriesUrlSlug string) (closeFunc, string, error) {
+	fileHandler := file.NewFileHandler()
+	closeFunc := func() {
+		defer fileHandler.Close()
+	}
+
+	zipfileList, err := fetchSeries(fileHandler, username, seriesUrlSlug)
+	if err != nil {
+		return closeFunc, "", err
+	}
+
 	zipFileName, err := fileHandler.CreateZipFile(file.ZipFile{
 		FileMeta: file.FileMeta{
-			Name:      postsInSeriesModel.Name,
+			Name:      fmt.Sprintf("%s-%s", username, seriesUrlSlug),
 			Extention: "zip",
 		},
-		Files: fileList,
+		Files: zipfileList,
 	})
 
 	if err != nil {
@@ -85,10 +95,82 @@ func FetchSeriesZip(username string, seriesUrlSlug string) (closeFunc, string, e
 }
 
 func FetchSelectedSeriesZip(username string, seriesUrlSlugList []string) (closeFunc, string, error) {
-	// TODO
-	return func() {}, "", nil
+	fileHandler := file.NewFileHandler()
+	closeFunc := func() {
+		defer fileHandler.Close()
+	}
+
+	zipfileList := []*os.File{}
+	for _, seriesUrlSlug := range seriesUrlSlugList {
+		fileList, err := fetchSeries(fileHandler, username, seriesUrlSlug)
+		if err != nil {
+			return closeFunc, "", err
+		}
+
+		zipfileList = append(zipfileList, fileList...)
+	}
+
+	zipFileName, err := fileHandler.CreateZipFile(file.ZipFile{
+		FileMeta: file.FileMeta{
+			Name:      fmt.Sprintf("%s-%s", username, "series-post-list"),
+			Extention: "zip",
+		},
+		Files: zipfileList,
+	})
+
+	if err != nil {
+		return closeFunc, "", err
+	}
+
+	return closeFunc, zipFileName, nil
 }
 
-func FetchAllSeriesZip(username string) {
-	// TODO
+func FetchAllSeriesZip(username string) (closeFunc, string, error) {
+	seriesItemList, err := GetSeries(username)
+	if err != nil {
+		return func() {}, "", err
+	}
+
+	fileHandler := file.NewFileHandler()
+	closeFunc := func() {
+		defer fileHandler.Close()
+	}
+
+	zipfileList := []*os.File{}
+	for _, seiriesItem := range seriesItemList {
+		fileList, err := fetchSeries(fileHandler, username, seiriesItem.URLSlug)
+		if err != nil {
+			return closeFunc, "", err
+		}
+
+		zipFileName, err := fileHandler.CreateZipFile(file.ZipFile{
+			FileMeta: file.FileMeta{
+				Name:      seiriesItem.Name,
+				Extention: "zip",
+			},
+			Files: fileList,
+		})
+
+		if err != nil {
+			return closeFunc, "", err
+		}
+		zipFh := fileHandler.GetFileWithLocked(zipFileName)
+		zipFh.Seek(0, 0)
+
+		zipfileList = append(zipfileList, zipFh)
+	}
+
+	zipFileName, err := fileHandler.CreateZipFile(file.ZipFile{
+		FileMeta: file.FileMeta{
+			Name:      username + "-all-series",
+			Extention: "zip",
+		},
+		Files: zipfileList,
+	})
+
+	if err != nil {
+		return closeFunc, "", err
+	}
+
+	return closeFunc, zipFileName, err
 }

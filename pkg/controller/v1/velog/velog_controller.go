@@ -1,6 +1,7 @@
-package v1controller
+package v1velogcontroller
 
 import (
+	"fmt"
 	"net/http"
 	"path/filepath"
 
@@ -62,7 +63,7 @@ func getPosts(c *gin.Context) {
 	logger := log.GetLogger()
 	user := c.Param("user")
 
-	var req VelogPostsRequestModel
+	var req VelogGetPostsRequestModel
 	err := c.ShouldBind(&req)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -93,7 +94,7 @@ func downloadPost(c *gin.Context) {
 	logger := log.GetLogger()
 	user := c.Param("user")
 
-	var req VelogPostRequestModel
+	var req VelogDownloadPostRequestModel
 	err := c.ShouldBind(&req)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -132,7 +133,7 @@ func downloadAllPosts(c *gin.Context) {
 func downloadSelectedPosts(c *gin.Context) {
 	logger := log.GetLogger()
 	user := c.Param("user")
-	var req []VelogPostRequestModel
+	var req []VelogDownloadPostRequestModel
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -196,12 +197,36 @@ func downloadSeries(c *gin.Context) {
 	c.FileAttachment(zipFilename, filepath.Base(zipFilename))
 }
 
-func downloadAllSeries(c *gin.Context) {
-	c.String(http.StatusOK, "all series")
+func downloadSelectedSeries(c *gin.Context) {
+	user := c.Param("user")
+
+	var req VelogDownloadSelectedSeriesRequestModel
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"err": err})
+		return
+	}
+
+	closeFunc, zipFilename, err := service.FetchSelectedSeriesZip(user, req.URLSlugList)
+	defer closeFunc()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"err": err})
+		return
+	}
+
+	c.FileAttachment(zipFilename, filepath.Base(zipFilename))
 }
 
-func downloadSelectedSeries(c *gin.Context) {
-	c.String(http.StatusOK, "selected series")
+func downloadAllSeries(c *gin.Context) {
+	user := c.Param("user")
+	fmt.Println("user:" + user)
+	closeFunc, zipFilename, err := service.FetchAllSeriesZip(user)
+	defer closeFunc()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"err": err})
+		return
+	}
+
+	c.FileAttachment(zipFilename, filepath.Base(zipFilename))
 }
 
 func getUserProfile(c *gin.Context) {

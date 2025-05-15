@@ -1,4 +1,4 @@
-package v1controller
+package v1velogcontroller
 
 import (
 	"net/http"

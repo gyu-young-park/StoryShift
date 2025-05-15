@@ -207,10 +207,17 @@ curl http://localhost:9596/v1/velog/chappi/series/eBPF
 
 - request
 ```sh
-http://localhost:9596/v1/velog/chappi/series/eBPF/dwonload
+http://localhost:9596/v1/velog/chappi/series/eBPF/download
 ```
 
 - response
 ```sh
 eBPF.zip
+```
+
+9. get all post in series as zip file
+
+- request
+```sh
+http://localhost:9596/v1/velog/chappi/series/download
 ```

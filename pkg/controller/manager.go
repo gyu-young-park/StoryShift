@@ -4,13 +4,14 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	v1controller "github.com/gyu-young-park/StoryShift/pkg/controller/v1"
+	v1statuscontroller "github.com/gyu-young-park/StoryShift/pkg/controller/v1/status"
+	v1velogcontroller "github.com/gyu-young-park/StoryShift/pkg/controller/v1/velog"
 )
 
 var (
 	v1Controllers = []controller{
-		v1controller.NewStatueController("/status"),
-		v1controller.NewVelogController("/velog"),
+		v1statuscontroller.NewStatueController("/status"),
+		v1velogcontroller.NewVelogController("/velog"),
 	}
 )
 
