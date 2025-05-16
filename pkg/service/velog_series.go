@@ -107,7 +107,23 @@ func FetchSelectedSeriesZip(username string, seriesUrlSlugList []string) (closeF
 			return closeFunc, "", err
 		}
 
-		zipfileList = append(zipfileList, fileList...)
+		// refactor: series data 가져오기, 공통 로직 분리하기
+		zipFileName, err := fileHandler.CreateZipFile(file.ZipFile{
+			FileMeta: file.FileMeta{
+				Name:      seriesUrlSlug,
+				Extention: "zip",
+			},
+			Files: fileList,
+		})
+
+		if err != nil {
+			return closeFunc, "", err
+		}
+
+		zipFh := fileHandler.GetFileWithLocked(zipFileName)
+		zipFh.Seek(0, 0)
+
+		zipfileList = append(zipfileList, zipFh)
 	}
 
 	zipFileName, err := fileHandler.CreateZipFile(file.ZipFile{
@@ -145,7 +161,7 @@ func FetchAllSeriesZip(username string) (closeFunc, string, error) {
 
 		zipFileName, err := fileHandler.CreateZipFile(file.ZipFile{
 			FileMeta: file.FileMeta{
-				Name:      seiriesItem.Name,
+				Name:      seiriesItem.URLSlug,
 				Extention: "zip",
 			},
 			Files: fileList,

@@ -200,13 +200,18 @@ func downloadSeries(c *gin.Context) {
 func downloadSelectedSeries(c *gin.Context) {
 	user := c.Param("user")
 
-	var req VelogDownloadSelectedSeriesRequestModel
+	var req []VelogDownloadSelectedSeriesRequestModel
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"err": err})
 		return
 	}
 
-	closeFunc, zipFilename, err := service.FetchSelectedSeriesZip(user, req.URLSlugList)
+	seriesURLSlugList := []string{}
+	for _, seriesUrlSlug := range req {
+		seriesURLSlugList = append(seriesURLSlugList, seriesUrlSlug.URLSlug)
+	}
+
+	closeFunc, zipFilename, err := service.FetchSelectedSeriesZip(user, seriesURLSlugList)
 	defer closeFunc()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"err": err})

@@ -221,3 +221,15 @@ eBPF.zip
 ```sh
 http://localhost:9596/v1/velog/chappi/series/download
 ```
+
+10. select the series that is to donwload
+
+- request
+```sh
+curl -X POST localhost:9596/v1/velog/chappi/series/download   -H "content-type: application/json" -d '[{"series_url_slug_list": "eBPF"}, {"series_url_slug_list": "sql"}]' --output result.zip
+``` 
+
+- response
+```sh
+result.zip
+```

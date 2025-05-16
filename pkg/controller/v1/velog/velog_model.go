@@ -15,5 +15,5 @@ type VelogReadSeriesRequestModel struct {
 }
 
 type VelogDownloadSelectedSeriesRequestModel struct {
-	URLSlugList []string `from:"series_url_slug_list" json:"series_url_slug_list"`
+	URLSlug string `from:"series_url_slug_list" json:"series_url_slug_list"`
 }
