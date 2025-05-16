@@ -162,6 +162,29 @@ func (v VelogAPI) ReadSeries(urlSlug string) (VelogReadSeries, error) {
 }
 
 func (v VelogAPI) UserProfile() (VelogUserProfile, error) {
-	// TODO
-	return VelogUserProfile{}, nil
+	reqBody := graphQLQuery.userProfile(v.Username)
+	resp, err := httpclient.Post(httpclient.PostRequestParam{
+		URL:         v.VelogAPIURL,
+		Body:        bytes.NewBuffer([]byte(reqBody)),
+		ContentType: "application/json",
+	})
+
+	if err != nil {
+		return VelogUserProfile{}, err
+	}
+
+	var model userProfileModel
+	err = json.Unmarshal(resp.Body, &model)
+
+	if err != nil {
+		return VelogUserProfile{}, err
+	}
+
+	return VelogUserProfile{
+		Id:        model.Data.User.ID,
+		Username:  model.Data.User.Username,
+		Describe:  model.Data.User.Profile.DisplayName,
+		Thumbnail: model.Data.User.Profile.Thumbnail,
+		Bio:       model.Data.User.Profile.ShortBio,
+	}, nil
 }

@@ -3,9 +3,21 @@ package service
 import (
 	"net/http"
 
+	"github.com/gyu-young-park/StoryShift/internal/config"
 	"github.com/gyu-young-park/StoryShift/internal/httpclient"
 	"github.com/gyu-young-park/StoryShift/pkg/log"
+	"github.com/gyu-young-park/StoryShift/pkg/velog"
 )
+
+func GetUserProfile(username string) (velog.VelogUserProfile, error) {
+	velogApi := velog.NewVelogAPI(config.Manager.VelogConfig.URL, username)
+	userProfile, err := velogApi.UserProfile()
+	if err != nil {
+		return velog.VelogUserProfile{}, err
+	}
+
+	return userProfile, nil
+}
 
 func IsVelogUserExists(username string) bool {
 	logger := log.GetLogger()

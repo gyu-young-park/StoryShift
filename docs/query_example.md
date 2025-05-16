@@ -233,3 +233,10 @@ curl -X POST localhost:9596/v1/velog/chappi/series/download   -H "content-type: 
 ```sh
 result.zip
 ```
+
+11. get user profile
+
+- request
+```sh
+curl localhost:9596/v1/velog/chappi/
+```

@@ -1,7 +1,6 @@
 package v1velogcontroller
 
 import (
-	"fmt"
 	"net/http"
 	"path/filepath"
 
@@ -223,7 +222,7 @@ func downloadSelectedSeries(c *gin.Context) {
 
 func downloadAllSeries(c *gin.Context) {
 	user := c.Param("user")
-	fmt.Println("user:" + user)
+
 	closeFunc, zipFilename, err := service.FetchAllSeriesZip(user)
 	defer closeFunc()
 	if err != nil {
@@ -235,5 +234,16 @@ func downloadAllSeries(c *gin.Context) {
 }
 
 func getUserProfile(c *gin.Context) {
-	c.String(http.StatusOK, "user profile")
+	user := c.Param("user")
+
+	userProfile, err := service.GetUserProfile(user)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"err": err,
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"user_profile": userProfile,
+	})
 }
