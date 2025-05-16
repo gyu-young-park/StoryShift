@@ -47,7 +47,7 @@ http://localhost:9596/v1/velog/chappi/posts?count=2&post_id=edcce6f5-581c-464f-a
 ```
 
 - response
-```sh
+```json
 {
   "posts": [
     {
@@ -239,4 +239,17 @@ result.zip
 - request
 ```sh
 curl localhost:9596/v1/velog/chappi/
+```
+
+- response
+```json
+{
+  "user_profile": {
+    "id": "6bd4c5a7-4d46-49ea-96e1-4c360d80e9b6",
+    "username": "chappi",
+    "describe": "놀고 싶은데, 왜 다들 공부하는거야",
+    "thumbnail": "https://images.velog.io/images/chappi/profile/8263888b-f500-4a39-8ae3-25a975e6d13d/힘들엉.jpg",
+    "Bio": "R3의 망령"
+  }
+}
 ```
