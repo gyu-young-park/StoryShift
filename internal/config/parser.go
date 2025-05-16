@@ -14,7 +14,8 @@ type envParser struct {
 }
 
 func (e envParser) parse(configModel *ConfigModel) {
-	configModel.VelogConfig.URL = getEnvDataWithDefault("VELOG_URL", "https://v2.velog.io/graphql")
+	configModel.VelogConfig.Url = getEnvDataWithDefault("VELOG_URL", "https://velog.io/")
+	configModel.VelogConfig.ApiUrl = getEnvDataWithDefault("VELOG_URL", "https://v2.velog.io/graphql")
 	configModel.AppConfig.Log.Level = getEnvDataWithDefault("APP_LOG_LEVEL", "DEBUG")
 	configModel.AppConfig.Log.Library = getEnvDataWithDefault("APP_LOG_LIBRARY", "zap")
 	configModel.AppConfig.Server.Port = getEnvDataWithDefault("APP_SERVER_PORT", "9596")

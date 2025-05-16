@@ -1,4 +1,4 @@
-package service
+package servicevelog
 
 import "github.com/gyu-young-park/StoryShift/pkg/velog"
 

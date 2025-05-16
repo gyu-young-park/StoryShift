@@ -1,4 +1,4 @@
-package service
+package servicevelog
 
 import (
 	"net/http"
@@ -10,7 +10,7 @@ import (
 )
 
 func GetUserProfile(username string) (velog.VelogUserProfile, error) {
-	velogApi := velog.NewVelogAPI(config.Manager.VelogConfig.URL, username)
+	velogApi := velog.NewVelogAPI(config.Manager.VelogConfig.ApiUrl, username)
 	userProfile, err := velogApi.UserProfile()
 	if err != nil {
 		return velog.VelogUserProfile{}, err

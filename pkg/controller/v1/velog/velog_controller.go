@@ -6,7 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gyu-young-park/StoryShift/pkg/log"
-	"github.com/gyu-young-park/StoryShift/pkg/service"
+	servicevelog "github.com/gyu-young-park/StoryShift/pkg/service/velog"
 )
 
 type velogController struct {
@@ -25,6 +25,7 @@ func (v *velogController) GetAPIGroup() string {
 
 func (v *velogController) RegisterAPI(router *gin.RouterGroup) {
 	router.Use(validateVelogUser())
+	router.GET("/", checkVelogService)
 	router.GET("/:user", getUserProfile)
 	router.GET("/:user/post/:url_slug", getPost)
 	router.GET("/:user/post/download", downloadPost)
@@ -38,6 +39,16 @@ func (v *velogController) RegisterAPI(router *gin.RouterGroup) {
 	router.POST("/:user/series/download", downloadSelectedSeries)
 }
 
+func checkVelogService(c *gin.Context) {
+	if !servicevelog.IsVelogUserExists("velopert") {
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"status": "not ready",
+		})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"status": "health"})
+}
+
 func getPost(c *gin.Context) {
 	logger := log.GetLogger()
 	user := c.Param("user")
@@ -47,7 +58,7 @@ func getPost(c *gin.Context) {
 		user,
 		urlSlug)
 
-	velogPost, err := service.GetPost(user, urlSlug)
+	velogPost, err := servicevelog.GetPost(user, urlSlug)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -78,7 +89,7 @@ func getPosts(c *gin.Context) {
 		req.PostId,
 		req.Count)
 
-	velogPosts, err := service.GetPosts(user, req.PostId, req.Count)
+	velogPosts, err := servicevelog.GetPosts(user, req.PostId, req.Count)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -101,7 +112,7 @@ func downloadPost(c *gin.Context) {
 	}
 
 	logger.Debugf("Velog username: %s, url_slug: %s", user, req.URLSlug)
-	closeFunc, zipFilename, err := service.FetchVelogPostZip(user, req.URLSlug)
+	closeFunc, zipFilename, err := servicevelog.FetchVelogPostZip(user, req.URLSlug)
 	defer closeFunc()
 
 	logger.Infof("get zip file: %s", zipFilename)
@@ -118,7 +129,7 @@ func downloadAllPosts(c *gin.Context) {
 	logger := log.GetLogger()
 	user := c.Param("user")
 
-	closeFunc, zipFilename, err := service.FetchAllVelogPostsZip(user)
+	closeFunc, zipFilename, err := servicevelog.FetchAllVelogPostsZip(user)
 	defer closeFunc()
 	if err != nil {
 		logger.Errorf("server error occureed: %s", err)
@@ -144,7 +155,7 @@ func downloadSelectedPosts(c *gin.Context) {
 		urlSlugList = append(urlSlugList, data.URLSlug)
 	}
 
-	closeFunc, zipFilename, err := service.FetchSelectedVelogPostsZip(user, urlSlugList)
+	closeFunc, zipFilename, err := servicevelog.FetchSelectedVelogPostsZip(user, urlSlugList)
 	defer closeFunc()
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -156,7 +167,7 @@ func downloadSelectedPosts(c *gin.Context) {
 
 func getSeries(c *gin.Context) {
 	user := c.Param("user")
-	series, err := service.GetSeries(user)
+	series, err := servicevelog.GetSeries(user)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -173,7 +184,7 @@ func getPostsInSeries(c *gin.Context) {
 	seriesUrlSlug := c.Param("url_slug")
 	logger.Infof("[readSeries] user: %v,seriesUrlSlug: %v", user, seriesUrlSlug)
 
-	postsInSeries, err := service.GetPostsInSereis(user, seriesUrlSlug)
+	postsInSeries, err := servicevelog.GetPostsInSereis(user, seriesUrlSlug)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"err": err})
 		return
@@ -186,7 +197,7 @@ func downloadSeries(c *gin.Context) {
 	user := c.Param("user")
 	seriesUrlSlug := c.Param("url_slug")
 
-	closeFunc, zipFilename, err := service.FetchSeriesZip(user, seriesUrlSlug)
+	closeFunc, zipFilename, err := servicevelog.FetchSeriesZip(user, seriesUrlSlug)
 	defer closeFunc()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"err": err})
@@ -210,7 +221,7 @@ func downloadSelectedSeries(c *gin.Context) {
 		seriesURLSlugList = append(seriesURLSlugList, seriesUrlSlug.URLSlug)
 	}
 
-	closeFunc, zipFilename, err := service.FetchSelectedSeriesZip(user, seriesURLSlugList)
+	closeFunc, zipFilename, err := servicevelog.FetchSelectedSeriesZip(user, seriesURLSlugList)
 	defer closeFunc()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"err": err})
@@ -223,7 +234,7 @@ func downloadSelectedSeries(c *gin.Context) {
 func downloadAllSeries(c *gin.Context) {
 	user := c.Param("user")
 
-	closeFunc, zipFilename, err := service.FetchAllSeriesZip(user)
+	closeFunc, zipFilename, err := servicevelog.FetchAllSeriesZip(user)
 	defer closeFunc()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"err": err})
@@ -236,7 +247,7 @@ func downloadAllSeries(c *gin.Context) {
 func getUserProfile(c *gin.Context) {
 	user := c.Param("user")
 
-	userProfile, err := service.GetUserProfile(user)
+	userProfile, err := servicevelog.GetUserProfile(user)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"err": err,

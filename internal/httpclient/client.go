@@ -1,9 +1,7 @@
 package httpclient
 
 import (
-	"io"
 	"net/http"
-	"strings"
 	"time"
 )
 
@@ -22,40 +20,26 @@ func NewDefaultHttpClient(timeout time.Duration, customTransport http.RoundTripp
 	}
 }
 
-func Get(param GetRequestParam) (ResponseParam, error) {
-	var sb strings.Builder
-	sb.WriteString(param.URL)
-
-	if param.Query != nil {
-		isFirst := true
-		for k, v := range param.Query {
-			if isFirst {
-				sb.WriteString("?")
-				isFirst = false
-			} else {
-				sb.WriteString("&")
-			}
-
-			sb.WriteString(k)
-			sb.WriteString("=")
-			sb.WriteString(v)
-		}
-	}
-
-	url := sb.String()
-	resp, err := defaultHTTPClient.Get(url)
+func Head(param HeadRequestParam) (ResponseParam, error) {
+	resp, err := defaultHTTPClient.Head(param.MakeURL())
 	if err != nil {
 		return ResponseParam{}, err
 	}
 
 	defer resp.Body.Close()
 
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return ResponseParam{StatusCode: resp.StatusCode}, err
-	}
-	return ResponseParam{StatusCode: resp.StatusCode, Body: respBody}, nil
+	return MakeResponseParam(*resp)
+}
 
+func Get(param GetRequestParam) (ResponseParam, error) {
+	resp, err := defaultHTTPClient.Get(param.MakeURL())
+	if err != nil {
+		return ResponseParam{}, err
+	}
+
+	defer resp.Body.Close()
+
+	return MakeResponseParam(*resp)
 }
 
 func Post(param PostRequestParam) (ResponseParam, error) {
@@ -66,9 +50,5 @@ func Post(param PostRequestParam) (ResponseParam, error) {
 
 	defer resp.Body.Close()
 
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return ResponseParam{StatusCode: resp.StatusCode}, err
-	}
-	return ResponseParam{StatusCode: resp.StatusCode, Body: respBody}, nil
+	return MakeResponseParam(*resp)
 }

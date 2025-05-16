@@ -1,4 +1,4 @@
-package service
+package servicevelog
 
 import (
 	"context"
@@ -14,7 +14,7 @@ import (
 )
 
 func GetPost(username, urlSlug string) (velog.VelogPost, error) {
-	velogApi := velog.NewVelogAPI(config.Manager.VelogConfig.URL, username)
+	velogApi := velog.NewVelogAPI(config.Manager.VelogConfig.ApiUrl, username)
 	velogPost, err := velogApi.Post(urlSlug)
 	if err != nil {
 		return velog.VelogPost{}, err
@@ -24,7 +24,7 @@ func GetPost(username, urlSlug string) (velog.VelogPost, error) {
 }
 
 func GetPosts(username, postId string, count int) ([]velog.VelogPostsItem, error) {
-	velogApi := velog.NewVelogAPI(config.Manager.VelogConfig.URL, username)
+	velogApi := velog.NewVelogAPI(config.Manager.VelogConfig.ApiUrl, username)
 	posts, err := velogApi.Posts(postId, count)
 	if err != nil {
 		return []velog.VelogPostsItem{}, err
@@ -36,7 +36,7 @@ func GetPosts(username, postId string, count int) ([]velog.VelogPostsItem, error
 type closeFunc func()
 
 func FetchVelogPostZip(username, postId string) (closeFunc, string, error) {
-	velogApi := velog.NewVelogAPI(config.Manager.VelogConfig.URL, username)
+	velogApi := velog.NewVelogAPI(config.Manager.VelogConfig.ApiUrl, username)
 	velogPost, err := velogApi.Post(postId)
 
 	if err != nil {
@@ -69,7 +69,7 @@ type RenamedFileJSON struct {
 
 func FetchAllVelogPostsZip(username string) (closeFunc, string, error) {
 	logger := log.GetLogger()
-	velogApi := velog.NewVelogAPI(config.Manager.VelogConfig.URL, username)
+	velogApi := velog.NewVelogAPI(config.Manager.VelogConfig.ApiUrl, username)
 	fileHandler := file.NewFileHandler()
 
 	closeFunc := func() {
@@ -190,7 +190,7 @@ func getAllPosts(velogApi *velog.VelogAPI) []velog.VelogPostsItem {
 
 func FetchSelectedVelogPostsZip(username string, urlSlugList []string) (closeFunc, string, error) {
 	// logger := log.GetLogger()
-	velogApi := velog.NewVelogAPI(config.Manager.VelogConfig.URL, username)
+	velogApi := velog.NewVelogAPI(config.Manager.VelogConfig.ApiUrl, username)
 	fh := file.NewFileHandler()
 
 	closeFunc := func() {

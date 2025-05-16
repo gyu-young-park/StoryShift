@@ -1,4 +1,4 @@
-package service
+package servicevelog
 
 import (
 	"fmt"
@@ -10,7 +10,7 @@ import (
 )
 
 func GetSeries(username string) ([]velog.VelogSeriesItem, error) {
-	velogApi := velog.NewVelogAPI(config.Manager.VelogConfig.URL, username)
+	velogApi := velog.NewVelogAPI(config.Manager.VelogConfig.ApiUrl, username)
 
 	seriesList, err := velogApi.Series()
 	if err != nil {
@@ -21,7 +21,7 @@ func GetSeries(username string) ([]velog.VelogSeriesItem, error) {
 }
 
 func GetPostsInSereis(username, seriesUrlSlug string) (PostsInSeriesModel, error) {
-	velogApi := velog.NewVelogAPI(config.Manager.VelogConfig.URL, username)
+	velogApi := velog.NewVelogAPI(config.Manager.VelogConfig.ApiUrl, username)
 	readSeriesList, err := velogApi.ReadSeries(seriesUrlSlug)
 	if err != nil {
 		return PostsInSeriesModel{}, err

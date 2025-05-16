@@ -15,7 +15,8 @@ type ServerConfigModel struct {
 }
 
 type VelogConfigModel struct {
-	URL string `json:"url" yaml:"url"`
+	Url    string `json:"url" yaml:"url"`
+	ApiUrl string `json:"api_url" yaml:"api_url"`
 }
 
 type ConfigModel struct {

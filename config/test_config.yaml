@@ -6,4 +6,5 @@ app:
     port: "9596"
 
 velog:
-  url: "https://v2.velog.io/graphql"
+  url: "https://velog.io/"
+  api_url: "https://v2.velog.io/graphql"
