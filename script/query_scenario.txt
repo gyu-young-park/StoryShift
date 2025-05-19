@@ -1,0 +1,10 @@
+1|get_posts_10|curl http://localhost:9596/v1/velog/chappi/posts?count=10
+2|get_posts_2_with_id|curl http://localhost:9596/v1/velog/chappi/posts?count=2&post_id=edcce6f5-581c-464f-a202-21ba6792ae62
+3|get_post_eBPF|curl http://localhost:9596/v1/velog/chappi/post/eBPF
+4|download_posts_zip|curl http://localhost:9596/v1/velog/chappi/posts/download --output posts_result.zip
+5|get_series|curl localhost:9596/v1/velog/chappi/series
+6|get_series_eBPF|curl http://localhost:9596/v1/velog/chappi/series/eBPF
+7|download_series_eBPF_zip|curl http://localhost:9596/v1/velog/chappi/series/eBPF/download --output series_result.zip
+8|download_all_series_zip|curl http://localhost:9596/v1/velog/chappi/series/download --output all_series_result.zip
+9|download_selected_series_zip|curl -X POST localhost:9596/v1/velog/chappi/series/download -H "content-type: application/json" -d '[{"series_url_slug_list": "eBPF"}, {"series_url_slug_list": "sql"}]' --output selected_series_result.zip
+10|get_root|curl localhost:9596/v1/velog/chappi/
