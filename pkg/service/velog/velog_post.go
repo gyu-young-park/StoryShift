@@ -23,11 +23,11 @@ func GetPost(username, urlSlug string) (velog.VelogPost, error) {
 	return velogPost, nil
 }
 
-func GetPosts(username, postId string, count int) ([]velog.VelogPostsItem, error) {
+func GetPosts(username, postId string, count int) (velog.VelogPostsItemList, error) {
 	velogApi := velog.NewVelogAPI(config.Manager.VelogConfig.ApiUrl, username)
 	posts, err := velogApi.Posts(postId, count)
 	if err != nil {
-		return []velog.VelogPostsItem{}, err
+		return velog.VelogPostsItemList{}, err
 	}
 
 	return posts, nil
@@ -161,9 +161,9 @@ func FetchAllVelogPostsZip(username string) (closeFunc, string, error) {
 	return closeFunc, zipFilename, nil
 }
 
-func getAllPosts(velogApi *velog.VelogAPI) []velog.VelogPostsItem {
+func getAllPosts(velogApi *velog.VelogAPI) velog.VelogPostsItemList {
 	logger := log.GetLogger()
-	velogPosts := []velog.VelogPostsItem{}
+	velogPosts := velog.VelogPostsItemList{}
 	cursor := ""
 	for {
 		posts, err := velogApi.Posts(cursor, 50)

@@ -19,7 +19,7 @@ func NewVelogAPI(apiUrl string, username string) VelogAPI {
 	}
 }
 
-func (v VelogAPI) Posts(cursor string, limit int) ([]VelogPostsItem, error) {
+func (v VelogAPI) Posts(cursor string, limit int) (VelogPostsItemList, error) {
 	reqBody := graphQLQuery.posts(v.Username, cursor, limit)
 
 	resp, err := httpclient.Post(httpclient.PostRequestParam{
@@ -29,32 +29,18 @@ func (v VelogAPI) Posts(cursor string, limit int) ([]VelogPostsItem, error) {
 	})
 
 	if err != nil {
-		return []VelogPostsItem{}, err
+		return VelogPostsItemList{}, err
 	}
 
 	var model postsModel
 	err = json.Unmarshal(resp.Body, &model)
 	if err != nil {
-		return []VelogPostsItem{}, err
+		return VelogPostsItemList{}, err
 	}
 
-	posts := []VelogPostsItem{}
-	for _, post := range model.Data.Posts {
-		posts = append(posts, VelogPostsItem{
-			commonVelogPost: commonVelogPost{
-				ID:        post.ID,
-				Title:     post.Title,
-				CreatedAt: post.ReleasedAt,
-				UpdatedAt: post.UpdatedAt,
-			},
-			ShortDesc: post.ShortDescription,
-			Thumnail:  post.Thumbnail,
-			UrlSlug:   post.URLSlug,
-			Tags:      post.Tags,
-		})
-	}
-
-	return posts, nil
+	posts := VelogPostsItemList{}
+	err = posts.mapped(model)
+	return posts, err
 }
 
 func (v VelogAPI) Post(urlSlug string) (VelogPost, error) {
@@ -76,20 +62,16 @@ func (v VelogAPI) Post(urlSlug string) (VelogPost, error) {
 		return VelogPost{}, err
 	}
 
-	post := VelogPost{
-		commonVelogPost: commonVelogPost{
-			ID:        model.Data.Post.ID,
-			Title:     model.Data.Post.Title,
-			CreatedAt: model.Data.Post.ReleasedAt,
-			UpdatedAt: model.Data.Post.UpdatedAt,
-		},
-		Body: model.Data.Post.Body,
+	post := VelogPost{}
+	err = post.mapped(model)
+	if err != nil {
+		return post, err
 	}
 
 	return post, nil
 }
 
-func (v VelogAPI) Series() ([]VelogSeriesItem, error) {
+func (v VelogAPI) Series() (VelogSeriesItemList, error) {
 	reqBody := graphQLQuery.userSeriesList(v.Username)
 	resp, err := httpclient.Post(httpclient.PostRequestParam{
 		URL:         v.VelogAPIURL,
@@ -98,30 +80,18 @@ func (v VelogAPI) Series() ([]VelogSeriesItem, error) {
 	})
 
 	if err != nil {
-		return []VelogSeriesItem{}, err
+		return VelogSeriesItemList{}, err
 	}
 
 	var model userSeriesListModel
 	err = json.Unmarshal(resp.Body, &model)
 	if err != nil {
-		return []VelogSeriesItem{}, err
+		return VelogSeriesItemList{}, err
 	}
 
-	seriesList := []VelogSeriesItem{}
-	for _, series := range model.Data.User.SeriesList {
-		seriesList = append(seriesList, VelogSeriesItem{
-			VelogSeriesBase: VelogSeriesBase{
-				ID:   series.ID,
-				Name: series.Name,
-			},
-			URLSlug:   series.URLSlug,
-			Count:     series.PostsCount,
-			Thumbnail: series.Thumbnail,
-			UpdatedAt: series.UpdatedAt,
-		})
-	}
-
-	return seriesList, nil
+	seriesList := VelogSeriesItemList{}
+	err = seriesList.mapped(model)
+	return seriesList, err
 }
 
 func (v VelogAPI) ReadSeries(urlSlug string) (VelogReadSeries, error) {
@@ -142,23 +112,9 @@ func (v VelogAPI) ReadSeries(urlSlug string) (VelogReadSeries, error) {
 		return VelogReadSeries{}, err
 	}
 
-	readSeries := VelogReadSeries{
-		VelogSeriesBase: VelogSeriesBase{
-			ID:   model.Data.Series.ID,
-			Name: model.Data.Series.Name,
-		},
-		Posts: []velogReadSeriesItem{},
-	}
-	for _, post := range model.Data.Series.SeriesPosts {
-		readSeries.Posts = append(readSeries.Posts, velogReadSeriesItem{
-			Title:     post.Post.Title,
-			URLSlug:   post.Post.URLSlug,
-			CreatedAt: post.Post.ReleasedAt,
-			UpdatedAt: post.Post.UpdatedAt,
-		})
-	}
-
-	return readSeries, nil
+	readSeries := VelogReadSeries{}
+	err = readSeries.mapped(model)
+	return readSeries, err
 }
 
 func (v VelogAPI) UserProfile() (VelogUserProfile, error) {
@@ -180,11 +136,7 @@ func (v VelogAPI) UserProfile() (VelogUserProfile, error) {
 		return VelogUserProfile{}, err
 	}
 
-	return VelogUserProfile{
-		Id:        model.Data.User.ID,
-		Username:  model.Data.User.Username,
-		Describe:  model.Data.User.Profile.DisplayName,
-		Thumbnail: model.Data.User.Profile.Thumbnail,
-		Bio:       model.Data.User.Profile.ShortBio,
-	}, nil
+	velogUserProfile := VelogUserProfile{}
+	err = velogUserProfile.mapped(model)
+	return velogUserProfile, err
 }

@@ -9,12 +9,12 @@ import (
 	"github.com/gyu-young-park/StoryShift/pkg/velog"
 )
 
-func GetSeries(username string) ([]velog.VelogSeriesItem, error) {
+func GetSeries(username string) (velog.VelogSeriesItemList, error) {
 	velogApi := velog.NewVelogAPI(config.Manager.VelogConfig.ApiUrl, username)
 
 	seriesList, err := velogApi.Series()
 	if err != nil {
-		return []velog.VelogSeriesItem{}, err
+		return velog.VelogSeriesItemList{}, err
 	}
 
 	return seriesList, nil

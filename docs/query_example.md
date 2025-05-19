@@ -82,7 +82,7 @@ http://localhost:9596/v1/velog/chappi/posts?count=2&post_id=edcce6f5-581c-464f-a
 3. Get post information in detail
 - request
 ```sh
-http://localhost:9596/v1/velog/chappi/post?url_slug=eBPF
+http://localhost:9596/v1/velog/chappi/post/eBPF
 ```
 
 - response
