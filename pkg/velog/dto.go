@@ -172,6 +172,7 @@ func (rs *VelogReadSeries) mapped(model readSeriesModel) error {
 		if err != nil {
 			return err
 		}
+		rs.Posts = append(rs.Posts, seriesItem)
 	}
 
 	return nil

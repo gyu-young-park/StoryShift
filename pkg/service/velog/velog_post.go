@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"sync"
 
 	"github.com/gyu-young-park/StoryShift/internal/config"
 	"github.com/gyu-young-park/StoryShift/pkg/file"
@@ -96,54 +95,42 @@ func FetchAllVelogPostsZip(username string) (closeFunc, string, error) {
 	workerManager := worker.NewWorkerManager[velog.VelogPostsItem, string](ctx, fmt.Sprintf("%s-%s", "velog-post-zip", username), 5)
 	defer workerManager.Close()
 
-	var wg sync.WaitGroup
-	for _, postInfo := range getAllPosts(&velogApi) {
-		wg.Add(1)
-		workerManager.Submit(worker.Task[velog.VelogPostsItem, string]{
-			Name:  fmt.Sprintf("task-%s", postInfo.Title),
-			Param: postInfo,
-			Fn: func(postItem velog.VelogPostsItem) string {
-				defer wg.Done()
-				post, err := velogApi.Post(postItem.UrlSlug)
-				if err != nil {
-					logger.Errorf("failed to get post %s, err: %s", post.Title, err.Error())
-					return ""
-				}
+	posts := getAllPosts(&velogApi)
+	fileNameList := workerManager.Aggregate(cancel, posts,
+		func(postItem velog.VelogPostsItem) string {
+			post, err := velogApi.Post(postItem.UrlSlug)
+			if err != nil {
+				logger.Errorf("failed to get post %s, err: %s", post.Title, err.Error())
+				return ""
+			}
 
-				sanitizedFile, isSanitized := sanitizeBasePathSpecialCase(post.Title)
-				if isSanitized {
-					logger.Debugf("sanitized file [%s] to [%s]", post.Title, sanitizedFile)
-					err := fileHandler.AppendDataToJsonFile(renamedFilename, RenamedFileJSON{Origin: post.Title, Rename: sanitizedFile})
-					if err != nil {
-						logger.Error(err.Error())
-					}
-				}
-
-				f, err := fileHandler.CreateFile(file.File{
-					FileMeta: file.FileMeta{
-						Name:      sanitizedFile,
-						Extention: "md",
-					},
-					Content: post.Body,
-				})
-
+			sanitizedFile, isSanitized := sanitizeBasePathSpecialCase(post.Title)
+			if isSanitized {
+				logger.Debugf("sanitized file [%s] to [%s]", post.Title, sanitizedFile)
+				err := fileHandler.AppendDataToJsonFile(renamedFilename, RenamedFileJSON{Origin: post.Title, Rename: sanitizedFile})
 				if err != nil {
 					logger.Error(err.Error())
 				}
+			}
 
-				return f
-			},
+			f, err := fileHandler.CreateFile(file.File{
+				FileMeta: file.FileMeta{
+					Name:      sanitizedFile,
+					Extention: "md",
+				},
+				Content: post.Body,
+			})
+
+			if err != nil {
+				logger.Error(err.Error())
+			}
+			return f
 		})
-	}
 
-	go func() {
-		wg.Wait()
-		defer cancel()
-	}()
-
-	fileNameList := workerManager.Result()
 	for _, filename := range fileNameList {
-		fileList = append(fileList, fileHandler.GetFileWithLocked(filename))
+		if filename != "" {
+			fileList = append(fileList, fileHandler.GetFileWithLocked(filename))
+		}
 	}
 
 	zipFilename, err := fileHandler.CreateZipFile(file.ZipFile{

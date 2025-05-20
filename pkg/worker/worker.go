@@ -9,9 +9,7 @@ import (
 )
 
 type WorkerManagable[P any, R any] interface {
-	Initialize() error
 	Close() error
-	Result() chan []R
 	Submit(task Task[P, R])
 }
 
@@ -69,16 +67,37 @@ func (w *WorkerManager[P, R]) Close() error {
 	return nil
 }
 
-func (w *WorkerManager[P, R]) Result() []R {
-	ret := []R{}
-	for res := range w.resultQueue {
-		ret = append(ret, res)
-	}
-	return ret
+func (w *WorkerManager[P, R]) GetResultChan() <-chan R {
+	return w.resultQueue
 }
 
 func (w *WorkerManager[P, R]) Submit(task Task[P, R]) {
 	go func() {
 		w.pool.taskQueue <- task
 	}()
+}
+
+func (w *WorkerManager[P, R]) Aggregate(cancel context.CancelFunc, paramList []P, taskFunc TaskFn[P, R]) []R {
+	var wg sync.WaitGroup
+	for i, param := range paramList {
+		wg.Add(1)
+		w.Submit(Task[P, R]{
+			Name:  fmt.Sprintf("aggregation-%s-%v", w.Name, i),
+			Param: param,
+			Fn:    taskFunc,
+		})
+	}
+
+	go func() {
+		wg.Wait()
+		defer cancel()
+	}()
+
+	ret := []R{}
+	for res := range w.resultQueue {
+		wg.Done()
+		ret = append(ret, res)
+	}
+
+	return ret
 }
