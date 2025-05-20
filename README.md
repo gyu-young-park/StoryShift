@@ -37,6 +37,11 @@ go run ./...
 go test ./... -v
 ```
 
+4. test query script
+```
+ ./script/query_test.sh
+```
+
 ---
 
 # 📘 Velog REST API

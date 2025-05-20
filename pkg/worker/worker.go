@@ -39,11 +39,11 @@ func NewWorkerManager[P any, R any](ctx context.Context, name string, maxWorker 
 		resultQueue: make(chan R, maxWorker),
 		ctx:         ctx,
 	}
-	wg.Initialize()
+	wg.initialize()
 	return wg
 }
 
-func (w *WorkerManager[P, R]) Initialize() {
+func (w *WorkerManager[P, R]) initialize() {
 	for i := 1; i <= w.pool.maxWorker; i++ {
 		go func(workerName string) {
 			logger := log.GetLogger()

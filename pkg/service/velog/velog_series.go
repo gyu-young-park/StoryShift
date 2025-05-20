@@ -1,12 +1,16 @@
 package servicevelog
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"sync"
 
 	"github.com/gyu-young-park/StoryShift/internal/config"
 	"github.com/gyu-young-park/StoryShift/pkg/file"
+	"github.com/gyu-young-park/StoryShift/pkg/log"
 	"github.com/gyu-young-park/StoryShift/pkg/velog"
+	"github.com/gyu-young-park/StoryShift/pkg/worker"
 )
 
 func GetSeries(username string) (velog.VelogSeriesItemList, error) {
@@ -142,6 +146,7 @@ func FetchSelectedSeriesZip(username string, seriesUrlSlugList []string) (closeF
 }
 
 func FetchAllSeriesZip(username string) (closeFunc, string, error) {
+	logger := log.GetLogger()
 	seriesItemList, err := GetSeries(username)
 	if err != nil {
 		return func() {}, "", err
@@ -152,29 +157,52 @@ func FetchAllSeriesZip(username string) (closeFunc, string, error) {
 		defer fileHandler.Close()
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+	workerManager := worker.NewWorkerManager[velog.VelogSeriesItem, *os.File](ctx, fmt.Sprintf("%s-%s", "velog-series-zip", username), 5)
+	defer workerManager.Close()
+	var wg sync.WaitGroup
+
 	zipfileList := []*os.File{}
 	for _, seiriesItem := range seriesItemList {
-		fileList, err := fetchSeries(fileHandler, username, seiriesItem.URLSlug)
-		if err != nil {
-			return closeFunc, "", err
-		}
+		wg.Add(1)
+		workerManager.Submit(worker.Task[velog.VelogSeriesItem, *os.File]{
+			Name:  "worker",
+			Param: seiriesItem,
+			Fn: func(vsi velog.VelogSeriesItem) *os.File {
+				defer wg.Done()
+				fileList, err := fetchSeries(fileHandler, username, vsi.URLSlug)
+				if err != nil {
+					logger.Errorf("failed to fetch sereis: %v", err.Error())
+					return nil
+				}
 
-		zipFileName, err := fileHandler.CreateZipFile(file.ZipFile{
-			FileMeta: file.FileMeta{
-				Name:      seiriesItem.URLSlug,
-				Extention: "zip",
+				zipFileName, err := fileHandler.CreateZipFile(file.ZipFile{
+					FileMeta: file.FileMeta{
+						Name:      vsi.URLSlug,
+						Extention: "zip",
+					},
+					Files: fileList,
+				})
+
+				if err != nil {
+					logger.Errorf("failed to create sereis zip file: %v", err.Error())
+					return nil
+				}
+				zipFh := fileHandler.GetFileWithLocked(zipFileName)
+				zipFh.Seek(0, 0)
+
+				return zipFh
 			},
-			Files: fileList,
 		})
-
-		if err != nil {
-			return closeFunc, "", err
-		}
-		zipFh := fileHandler.GetFileWithLocked(zipFileName)
-		zipFh.Seek(0, 0)
-
-		zipfileList = append(zipfileList, zipFh)
 	}
+
+	go func() {
+		wg.Wait()
+		defer cancel()
+	}()
+
+	results := workerManager.Result()
+	zipfileList = append(zipfileList, results...)
 
 	zipFileName, err := fileHandler.CreateZipFile(file.ZipFile{
 		FileMeta: file.FileMeta{
