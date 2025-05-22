@@ -9,7 +9,7 @@ PORT="9596"
 START_API_SERVER_SCRIPT_PATH=${CUR_DIR}/start.sh
 
 function get_parameter() {
-    while getopts "d:o;s;p" opt "$@"; do
+    while getopts "d:o:s:p" opt "$@"; do
         case "$opt" in
             d) TEST_DIR="$OPTARG" ;;
             s) QUERT_SCEANARIO_FILE="$OPTARG" ;;
