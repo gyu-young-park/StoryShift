@@ -9,18 +9,41 @@ IMAGE_TAG=latest
 NAMESPACE=""
 REGISTRY=""
 DOCKER_FILE="${DOCKER_PATH}/Dockerfile"
+RUN_OPT=""
+
+COMMAND=""
+BUILD=false
+RUN=false
+
+function eval_command() {
+    command="$1"
+    echo "command: ${command}"
+
+    if [ "${command}" = "build" ]; then
+        BUILD=true
+    elif [ "${command}" = "run" ]; then
+        RUN=true
+    else
+        BUILD=true
+        RUN=true
+    fi
+}
 
 function get_parameter() {
-    while getopts "i:t:n:f:r" opt "$@"; do
+    while getopts "i:t:n:f:r:c:R:" opt "$@"; do
         case "$opt" in
             i) IMAGE_NAME="$OPTARG" ;;
             t) IMAGE_TAG="$OPTARG" ;;
             n) NAMESPACE="$OPTARG" ;;
             f) DOCKER_FILE="$OPTARG" ;;
             r) REGISTRY="$OPTARG" ;;
+            c) COMMAND="$OPTARG" ;;
+            R) RUN_OPT="$OPTARG" ;;
             *) echo "Usage: "; exit 1 ;;
         esac
     done
+
+    eval_command "${COMMAND}"
 }
 
 function get_container_runtime() {
@@ -49,6 +72,7 @@ function docker_build() {
     build_opt=$2
     image_name=$3
 
+    echo "----------------------IMAGE BUILD--------------------"
     echo "CONTAINER_RUNTIME: ${container_runtime}"
     echo "PROJECT: ${PROJECT_PATH}"
     echo "DOCKER_FILE: ${DOCKER_FILE}"
@@ -58,21 +82,37 @@ function docker_build() {
     pushd ${PROJECT_PATH}
         ${container_runtime} build ${build_opt} -f ${DOCKER_FILE} -t ${image_name} ${PROJECT_PATH}
     popd
+    echo "-----------------------------------------------------"
+}
+
+function docker_run() {
+    container_runtime=$1
+    run_opt=$2
+    image_name=$3
+    
+    echo "---------------------------RUN------------------------"
+    echo "CONTAINER_RUNTIME: ${container_runtime}"
+    echo "RUN_OPT: ${run_opt}"
+    echo "IMAGE_NAME: ${image_name}"
+
+    ${container_runtime} run ${run_opt} --rm ${image_name}
+    echo "-----------------------------------------------------"
 }
 
 function main() {
     get_parameter "$@"
     container_runtime=$(get_container_runtime)
-    echo "Container Runtime: ${container_runtime}"
-
     namespace=$(get_namespace $container_runtime)
-    build_opt="${namespace}"
     image_name=$(get_image_name)
+    build_opt="${namespace}"
 
-    docker_build "${container_runtime}" "${build_opt}" "${image_name}"
+    if $BUILD; then
+        docker_build "${container_runtime}" "${build_opt}" "${image_name}"
+    fi
+
+    if $RUN; then
+        docker_run "${container_runtime}" "${RUN_OPT}" "${image_name}"
+    fi
 }
 
 main "$@"
-
-# docker build -f ./Dockerfile -t StoryShift:0.0.1 .
-# docker run --name storyshift -e STORY_SHIFT_CONFIG_FILE=./config/test_config.yaml docker.io/library/story-shift:0.0.1

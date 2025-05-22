@@ -38,8 +38,25 @@ go test ./... -v
 ```
 
 4. test query script
-```
+```bssh
  ./script/query_test.sh
+```
+
+5. dockerfile
+
+- build and run
+```bssh
+./script/docker_script.sh -t 1.0.1 -f ./Dockerfile -R "-p 9596:9596 -e STORY_SHIFT_CONFIG_FILE=./config/test_config.yaml"
+```
+
+- build
+```bash
+./script/docker_script.sh -t 1.0.1 -f ./Dockerfile -R "-p 9596:9596 -c build
+```
+
+- run
+```bssh
+./script/docker_script.sh -t 1.0.1 -f ./Dockerfile -c run -R "-p 9596:9596 -e STORY_SHIFT_CONFIG_FILE=./config/test_config.yaml"
 ```
 
 ---
