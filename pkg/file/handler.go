@@ -17,14 +17,23 @@ const (
 )
 
 func NewFileHandler() *FileHandler {
+	dir, err := os.MkdirTemp(TEMP_DIR, "filehandler-*")
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println("Random dir:", dir)
+
 	return &FileHandler{
 		mu:    sync.RWMutex{},
+		dir:   dir,
 		files: make(map[string]*os.File),
 	}
 }
 
 type FileHandler struct {
 	mu    sync.RWMutex
+	dir   string
 	files map[string]*os.File
 }
 
@@ -55,17 +64,14 @@ func (f *FileHandler) Close() {
 		os.Remove(file.Name())
 		file.Close()
 	}
+	os.Remove(f.dir)
 }
 
 func (f *FileHandler) CreateFile(file File) (string, error) {
 	logger := log.GetLogger()
 	logger.Infof("download file: %s", file.GetFilename())
 
-	if _, err := os.Stat(TEMP_DIR); os.IsNotExist(err) {
-		os.Mkdir(TEMP_DIR, 0755)
-	}
-
-	tmpFile, err := os.Create(fmt.Sprintf("%s/%s", TEMP_DIR, file.GetFilename()))
+	tmpFile, err := os.Create(fmt.Sprintf("%s/%s", f.dir, file.GetFilename()))
 	if err != nil {
 		logger.Errorf("failed to create temp file: %s", file.GetFilename())
 		return "", err
