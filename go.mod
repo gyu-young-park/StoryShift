@@ -1,6 +1,6 @@
 module github.com/gyu-young-park/StoryShift
 
-go 1.21.0
+go 1.24.3
 
 require (
 	github.com/gin-gonic/gin v1.10.0
