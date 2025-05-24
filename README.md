@@ -51,7 +51,7 @@ go test ./... -v
 
 - build
 ```bash
-./script/docker_script.sh -t 1.0.1 -f ./Dockerfile -R "-p 9596:9596 -c build
+./script/docker_script.sh -t 1.0.1 -f ./Dockerfile
 ```
 
 - run
