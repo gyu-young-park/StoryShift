@@ -1,3 +1,5 @@
+#!/bin/bash
+
 CUR_PATH="$(realpath "$0")"
 CUR_DIR="$(dirname "$CUR_PATH")"
 TEST_DIR="${CUR_DIR}/$(date '+%Y%m%d%H%M%S')_TEST"
