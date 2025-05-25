@@ -1,8 +1,10 @@
 #!/bin/bash
 
 SCRIPT_PATH="$(realpath "$0")"
-PROJECT_PATH="$(dirname "$(dirname ${SCRIPT_PATH})")"
+SCRIPT_DIR="$(dirname ${SCRIPT_PATH})"
+PROJECT_PATH="$(dirname "${SCRIPT_DIR}")"
 DOCKER_PATH=${PROJECT_PATH}
+CACHE_SCRIPT="run_redis.sh"
 
 IMAGE_NAME=story-shift
 IMAGE_TAG=latest
@@ -10,6 +12,7 @@ NAMESPACE=""
 REGISTRY=""
 DOCKER_FILE="${DOCKER_PATH}/Dockerfile"
 RUN_OPT=""
+NETWORK="story-shift"
 
 COMMAND=""
 BUILD=false
@@ -94,9 +97,24 @@ function docker_run() {
     echo "CONTAINER_RUNTIME: ${container_runtime}"
     echo "RUN_OPT: ${run_opt}"
     echo "IMAGE_NAME: ${image_name}"
-
-    ${container_runtime} run ${run_opt} --rm ${image_name}
+    echo "Network: ${NETWORK}"
+    ${container_runtime} run ${run_opt} --network ${NETWORK} --rm ${image_name}
     echo "-----------------------------------------------------"
+}
+
+function create_docker_network() {
+    network_id="$(docker network ls | grep ${NETWORK} | awk '{print $1}')"
+    if [ "${network_id}" = "" ]; then
+        ${container_runtime} network create ${NETWORK}
+    else
+        echo "Alreay network is running"
+    fi
+}
+
+function docker_run_cache() {
+    cache_script="${SCRIPT_DIR}/${CACHE_SCRIPT}"
+    echo "Cache script: ${cache_script}"
+    bash ${cache_script} -t redis -n "${NETWORK}"
 }
 
 function main() {
@@ -111,6 +129,8 @@ function main() {
     fi
 
     if $RUN; then
+        create_docker_network
+        docker_run_cache
         docker_run "${container_runtime}" "${RUN_OPT}" "${image_name}"
     fi
 }

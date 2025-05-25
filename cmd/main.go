@@ -17,6 +17,8 @@ func main() {
 		os.Mkdir(file.TEMP_DIR, 0755)
 	}
 
+	// cache := cache.NewClient("cache:6379", "")
+
 	logger.Info("App starts", zap.String("hellp", "world"))
 	server.Start(config.Manager.ConfigModel)
 }
