@@ -4,7 +4,7 @@ IMAGE=redis
 TAG=7.2.5
 SELECT=""
 TYPE="redis"
-NETWORK="story-shift"
+NETWORK="bridge"
 
 function get_parameter() {
     while getopts "t:n:" opt "$@"; do

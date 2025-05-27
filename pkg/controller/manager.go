@@ -7,6 +7,7 @@ import (
 	"github.com/gyu-young-park/StoryShift/internal/injector"
 	v1statuscontroller "github.com/gyu-young-park/StoryShift/pkg/controller/v1/status"
 	v1velogcontroller "github.com/gyu-young-park/StoryShift/pkg/controller/v1/velog"
+	"github.com/gyu-young-park/StoryShift/pkg/log"
 )
 
 type controller interface {
@@ -21,6 +22,7 @@ type controllerManager struct {
 // TODO: change controller chaning like: c1.register(c2).register(c3)
 // AND the path will be like c1/c2/c3/api
 func NewControllerManager() *controllerManager {
+	logger := log.GetLogger()
 	c := controllerManager{
 		engine: gin.Default(),
 	}
@@ -36,6 +38,10 @@ func NewControllerManager() *controllerManager {
 		group := v1groupRouter.Group(apiController.GetAPIGroup())
 		apiController.RegisterAPI(group)
 		apiGroupList = append(apiGroupList, group.BasePath())
+	}
+
+	for _, apiGroup := range apiGroupList {
+		logger.Info("API GROUP: " + apiGroup)
 	}
 
 	c.engine.GET("/", func(ctx *gin.Context) {
