@@ -1,10 +1,21 @@
 package cache
 
-import "github.com/redis/go-redis/v9"
+import (
+	"sync"
 
-func NewClient(addr string, password string) *redis.Client {
-	return redis.NewClient(&redis.Options{
-		Addr:     addr,
-		Password: password,
+	"github.com/redis/go-redis/v9"
+)
+
+var (
+	once                = sync.Once{}
+	Redis *redis.Client = nil
+)
+
+func InitRedisClient(addr string, password string) {
+	once.Do(func() {
+		Redis = redis.NewClient(&redis.Options{
+			Addr:     addr,
+			Password: password,
+		})
 	})
 }

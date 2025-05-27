@@ -14,6 +14,13 @@ type ServerConfigModel struct {
 	Port string `json:"port" yaml:"port"`
 }
 
+type RedisConfigModel struct {
+	Enabled  bool   `json:"enabled" yaml:"enabled"`
+	Test     bool   `json:"test" yaml:"test"`
+	Addr     string `json:"addr" yaml:"addr"`
+	Password string `json:"password" yaml:"password"`
+}
+
 type VelogConfigModel struct {
 	Url    string `json:"url" yaml:"url"`
 	ApiUrl string `json:"api_url" yaml:"api_url"`
@@ -21,5 +28,6 @@ type VelogConfigModel struct {
 
 type ConfigModel struct {
 	AppConfig   AppConfigModel   `json:"app" yaml:"app"`
+	RedisConfig RedisConfigModel `json:"redis" yaml:"redis"`
 	VelogConfig VelogConfigModel `json:"velog" yaml:"velog"`
 }

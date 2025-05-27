@@ -5,6 +5,12 @@ app:
   server:
     port: "9596"
 
+redis:
+  enabled: true
+  test: false
+  addr: "localhost:6379"
+  password: ""
+
 velog:
   url: "https://velog.io/"
   api_url: "https://v2.velog.io/graphql"
