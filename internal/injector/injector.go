@@ -9,13 +9,17 @@ import (
 var Container *container = nil
 
 type container struct {
-	Redis *redis.Client
+	redisClient *redis.Client
 }
 
 func Initialize() {
 	Container = &container{
-		Redis: redisClient(),
+		redisClient: redisClient(),
 	}
+}
+
+func (c *container) Redis() *redis.Client {
+	return c.redisClient
 }
 
 func redisClient() *redis.Client {
