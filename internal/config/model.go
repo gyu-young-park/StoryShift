@@ -15,7 +15,6 @@ type ServerConfigModel struct {
 }
 
 type RedisConfigModel struct {
-	Enabled  bool   `json:"enabled" yaml:"enabled"`
 	Test     bool   `json:"test" yaml:"test"`
 	Addr     string `json:"addr" yaml:"addr"`
 	Password string `json:"password" yaml:"password"`
