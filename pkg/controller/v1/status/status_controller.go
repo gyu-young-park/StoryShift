@@ -8,35 +8,37 @@ import (
 )
 
 type statueController struct {
+	service  *servicestatus.StatusService
 	APIGroup string
 }
 
-func NewStatueController(apiGroup string) *statueController {
+func NewStatueController(apiGroup string, service *servicestatus.StatusService) *statueController {
 	return &statueController{
+		service:  service,
 		APIGroup: apiGroup,
 	}
 }
 
-func (h *statueController) GetAPIGroup() string {
-	return h.APIGroup
+func (s *statueController) GetAPIGroup() string {
+	return s.APIGroup
 }
 
-func (v *statueController) RegisterAPI(router *gin.RouterGroup) {
-	router.GET("/startup", startupCheckHandler)
-	router.GET("/health", livenessCheckHandler)
-	router.GET("/ready", readinessCheckHandler)
+func (s *statueController) RegisterAPI(router *gin.RouterGroup) {
+	router.GET("/startup", s.startupCheckHandler)
+	router.GET("/health", s.livenessCheckHandler)
+	router.GET("/ready", s.readinessCheckHandler)
 }
 
-func startupCheckHandler(c *gin.Context) {
+func (s *statueController) startupCheckHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"status": "ok"})
 }
 
-func livenessCheckHandler(c *gin.Context) {
+func (s *statueController) livenessCheckHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"status": "health"})
 }
 
-func readinessCheckHandler(c *gin.Context) {
-	if !servicestatus.Ready() {
+func (s *statueController) readinessCheckHandler(c *gin.Context) {
+	if !s.service.Ready() {
 		c.JSON(http.StatusInternalServerError, gin.H{"err": "server is not ready"})
 		return
 	}

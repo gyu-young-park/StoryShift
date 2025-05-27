@@ -26,7 +26,7 @@ func NewControllerManager() *controllerManager {
 	}
 
 	v1Controllers := []controller{
-		v1statuscontroller.NewStatueController("/status"),
+		v1statuscontroller.NewStatueController("/status", injector.Container.StatusService()),
 		v1velogcontroller.NewVelogController("/velog", injector.Container.VelogService()),
 	}
 

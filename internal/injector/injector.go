@@ -3,6 +3,7 @@ package injector
 import (
 	"github.com/gyu-young-park/StoryShift/internal/cache"
 	"github.com/gyu-young-park/StoryShift/internal/config"
+	servicestatus "github.com/gyu-young-park/StoryShift/pkg/service/status"
 	servicevelog "github.com/gyu-young-park/StoryShift/pkg/service/velog"
 	"github.com/redis/go-redis/v9"
 )
@@ -10,15 +11,17 @@ import (
 var Container *container = nil
 
 type container struct {
-	velogService *servicevelog.VelogService
-	redisClient  *redis.Client
+	statusService *servicestatus.StatusService
+	velogService  *servicevelog.VelogService
+	redisClient   *redis.Client
 }
 
 func Initialize() {
 	redisClient := redisClient()
 	Container = &container{
-		velogService: servicevelog.NewVelogService(redisClient),
-		redisClient:  redisClient,
+		statusService: servicestatus.NewStatusService(redisClient),
+		velogService:  servicevelog.NewVelogService(redisClient),
+		redisClient:   redisClient,
 	}
 }
 
@@ -28,6 +31,10 @@ func (c *container) Redis() *redis.Client {
 
 func (c *container) VelogService() *servicevelog.VelogService {
 	return c.velogService
+}
+
+func (c *container) StatusService() *servicestatus.StatusService {
+	return c.statusService
 }
 
 func redisClient() *redis.Client {
