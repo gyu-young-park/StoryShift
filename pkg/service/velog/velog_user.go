@@ -9,7 +9,7 @@ import (
 	"github.com/gyu-young-park/StoryShift/pkg/velog"
 )
 
-func GetUserProfile(username string) (velog.VelogUserProfile, error) {
+func (v *VelogService) GetUserProfile(username string) (velog.VelogUserProfile, error) {
 	velogApi := velog.NewVelogAPI(config.Manager.VelogConfig.ApiUrl, username)
 	userProfile, err := velogApi.UserProfile()
 	if err != nil {
@@ -19,7 +19,7 @@ func GetUserProfile(username string) (velog.VelogUserProfile, error) {
 	return userProfile, nil
 }
 
-func IsVelogUserExists(username string) bool {
+func (v *VelogService) IsVelogUserExists(username string) bool {
 	logger := log.GetLogger()
 
 	resp, err := httpclient.Get(httpclient.GetRequestParam{

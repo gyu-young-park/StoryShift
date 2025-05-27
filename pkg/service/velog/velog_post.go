@@ -12,7 +12,7 @@ import (
 	"github.com/gyu-young-park/StoryShift/pkg/worker"
 )
 
-func GetPost(username, urlSlug string) (velog.VelogPost, error) {
+func (v *VelogService) GetPost(username, urlSlug string) (velog.VelogPost, error) {
 	velogApi := velog.NewVelogAPI(config.Manager.VelogConfig.ApiUrl, username)
 	velogPost, err := velogApi.Post(urlSlug)
 	if err != nil {
@@ -22,7 +22,7 @@ func GetPost(username, urlSlug string) (velog.VelogPost, error) {
 	return velogPost, nil
 }
 
-func GetPosts(username, postId string, count int) (velog.VelogPostsItemList, error) {
+func (v *VelogService) GetPosts(username, postId string, count int) (velog.VelogPostsItemList, error) {
 	velogApi := velog.NewVelogAPI(config.Manager.VelogConfig.ApiUrl, username)
 	posts, err := velogApi.Posts(postId, count)
 	if err != nil {
@@ -34,7 +34,7 @@ func GetPosts(username, postId string, count int) (velog.VelogPostsItemList, err
 
 type closeFunc func()
 
-func FetchVelogPostZip(username, postId string) (closeFunc, string, error) {
+func (v *VelogService) FetchVelogPostZip(username, postId string) (closeFunc, string, error) {
 	velogApi := velog.NewVelogAPI(config.Manager.VelogConfig.ApiUrl, username)
 	velogPost, err := velogApi.Post(postId)
 
@@ -66,7 +66,7 @@ type RenamedFileJSON struct {
 	Rename string `json:"rename"`
 }
 
-func FetchAllVelogPostsZip(username string) (closeFunc, string, error) {
+func (v *VelogService) FetchAllVelogPostsZip(username string) (closeFunc, string, error) {
 	logger := log.GetLogger()
 	velogApi := velog.NewVelogAPI(config.Manager.VelogConfig.ApiUrl, username)
 	fileHandler := file.NewFileHandler()
@@ -95,7 +95,7 @@ func FetchAllVelogPostsZip(username string) (closeFunc, string, error) {
 	workerManager := worker.NewWorkerManager[velog.VelogPostsItem, string](ctx, fmt.Sprintf("%s-%s", "velog-post-zip", username), 5)
 	defer workerManager.Close()
 
-	posts := getAllPosts(&velogApi)
+	posts := v.getAllPosts(&velogApi)
 	fileNameList := workerManager.Aggregate(cancel, posts,
 		func(postItem velog.VelogPostsItem) string {
 			post, err := velogApi.Post(postItem.UrlSlug)
@@ -148,7 +148,7 @@ func FetchAllVelogPostsZip(username string) (closeFunc, string, error) {
 	return closeFunc, zipFilename, nil
 }
 
-func getAllPosts(velogApi *velog.VelogAPI) velog.VelogPostsItemList {
+func (v *VelogService) getAllPosts(velogApi *velog.VelogAPI) velog.VelogPostsItemList {
 	logger := log.GetLogger()
 	velogPosts := velog.VelogPostsItemList{}
 	cursor := ""
@@ -175,7 +175,7 @@ func getAllPosts(velogApi *velog.VelogAPI) velog.VelogPostsItemList {
 	return velogPosts
 }
 
-func FetchSelectedVelogPostsZip(username string, urlSlugList []string) (closeFunc, string, error) {
+func (v *VelogService) FetchSelectedVelogPostsZip(username string, urlSlugList []string) (closeFunc, string, error) {
 	// logger := log.GetLogger()
 	velogApi := velog.NewVelogAPI(config.Manager.VelogConfig.ApiUrl, username)
 	fh := file.NewFileHandler()

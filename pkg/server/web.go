@@ -14,7 +14,7 @@ func Start(c config.ConfigModel) {
 
 	s := http.Server{
 		Addr:    fmt.Sprintf(":%s", config.Manager.AppConfig.Server.Port),
-		Handler: controller.Manager.GetHTTPHandler(),
+		Handler: controller.NewControllerManager().GetHTTPHandler(),
 	}
 	logger.Infof("Server started, port: %v", config.Manager.AppConfig.Server.Port)
 

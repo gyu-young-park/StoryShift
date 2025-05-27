@@ -3,6 +3,7 @@ package cache
 import (
 	"context"
 
+	"github.com/gyu-young-park/StoryShift/pkg/log"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -40,7 +41,14 @@ func (r *redisBuilder) IsTest(isTest bool) *redisBuilder {
 }
 
 func (r *redisBuilder) New() *redis.Client {
+	logger := log.GetLogger()
 	client := redis.NewClient(resolveRedisOpt(r))
+	status, err := client.Ping(context.Background()).Result()
+	if err != nil {
+		panic(err)
+	}
+
+	logger.Info("redis ping! " + status)
 
 	if r.isTest {
 		client.FlushDB(context.Background())

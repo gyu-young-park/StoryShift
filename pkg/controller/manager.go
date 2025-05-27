@@ -4,18 +4,10 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gyu-young-park/StoryShift/internal/injector"
 	v1statuscontroller "github.com/gyu-young-park/StoryShift/pkg/controller/v1/status"
 	v1velogcontroller "github.com/gyu-young-park/StoryShift/pkg/controller/v1/velog"
 )
-
-var (
-	v1Controllers = []controller{
-		v1statuscontroller.NewStatueController("/status"),
-		v1velogcontroller.NewVelogController("/velog"),
-	}
-)
-
-var Manager *controllerManager = newControllerManager()
 
 type controller interface {
 	RegisterAPI(*gin.RouterGroup)
@@ -28,9 +20,14 @@ type controllerManager struct {
 
 // TODO: change controller chaning like: c1.register(c2).register(c3)
 // AND the path will be like c1/c2/c3/api
-func newControllerManager() *controllerManager {
+func NewControllerManager() *controllerManager {
 	c := controllerManager{
 		engine: gin.Default(),
+	}
+
+	v1Controllers := []controller{
+		v1statuscontroller.NewStatueController("/status"),
+		v1velogcontroller.NewVelogController("/velog", injector.Container.VelogService()),
 	}
 
 	apiGroupList := []string{}

@@ -7,6 +7,7 @@ import (
 )
 
 func TestIsVelogUserExists(t *testing.T) {
-	assert.Equal(t, true, IsVelogUserExists("chappi"))
-	assert.Equal(t, false, IsVelogUserExists("qowiendsm192j3i1"))
+	v := VelogService{}
+	assert.Equal(t, true, v.IsVelogUserExists("chappi"))
+	assert.Equal(t, false, v.IsVelogUserExists("qowiendsm192j3i1"))
 }

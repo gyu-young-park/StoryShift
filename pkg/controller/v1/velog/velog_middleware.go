@@ -7,10 +7,10 @@ import (
 	servicevelog "github.com/gyu-young-park/StoryShift/pkg/service/velog"
 )
 
-func validateVelogUser() gin.HandlerFunc {
+func validateVelogUser(service *servicevelog.VelogService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		user := c.Param("user")
-		if !servicevelog.IsVelogUserExists(user) {
+		if !service.IsVelogUserExists(user) {
 			c.JSON(http.StatusNotFound, gin.H{
 				"error": "Can't find the user: " + user,
 			})

@@ -12,7 +12,7 @@ import (
 	"github.com/gyu-young-park/StoryShift/pkg/worker"
 )
 
-func GetSeries(username string) (velog.VelogSeriesItemList, error) {
+func (v *VelogService) GetSeries(username string) (velog.VelogSeriesItemList, error) {
 	velogApi := velog.NewVelogAPI(config.Manager.VelogConfig.ApiUrl, username)
 
 	seriesList, err := velogApi.Series()
@@ -23,7 +23,7 @@ func GetSeries(username string) (velog.VelogSeriesItemList, error) {
 	return seriesList, nil
 }
 
-func GetPostsInSereis(username, seriesUrlSlug string) (PostsInSeriesModel, error) {
+func (v *VelogService) GetPostsInSereis(username, seriesUrlSlug string) (PostsInSeriesModel, error) {
 	velogApi := velog.NewVelogAPI(config.Manager.VelogConfig.ApiUrl, username)
 	readSeriesList, err := velogApi.ReadSeries(seriesUrlSlug)
 	if err != nil {
@@ -46,8 +46,8 @@ func GetPostsInSereis(username, seriesUrlSlug string) (PostsInSeriesModel, error
 	return postInSeriesModel, nil
 }
 
-func fetchSeries(fileHandler *file.FileHandler, username string, seriesUrlSlug string) ([]*os.File, error) {
-	postsInSeriesModel, err := GetPostsInSereis(username, seriesUrlSlug)
+func (v *VelogService) fetchSeries(fileHandler *file.FileHandler, username string, seriesUrlSlug string) ([]*os.File, error) {
+	postsInSeriesModel, err := v.GetPostsInSereis(username, seriesUrlSlug)
 	if err != nil {
 		return nil, err
 	}
@@ -71,13 +71,13 @@ func fetchSeries(fileHandler *file.FileHandler, username string, seriesUrlSlug s
 	return fileList, nil
 }
 
-func FetchSeriesZip(username string, seriesUrlSlug string) (closeFunc, string, error) {
+func (v *VelogService) FetchSeriesZip(username string, seriesUrlSlug string) (closeFunc, string, error) {
 	fileHandler := file.NewFileHandler()
 	closeFunc := func() {
 		defer fileHandler.Close()
 	}
 
-	zipfileList, err := fetchSeries(fileHandler, username, seriesUrlSlug)
+	zipfileList, err := v.fetchSeries(fileHandler, username, seriesUrlSlug)
 	if err != nil {
 		return closeFunc, "", err
 	}
@@ -98,7 +98,7 @@ func FetchSeriesZip(username string, seriesUrlSlug string) (closeFunc, string, e
 
 }
 
-func FetchSelectedSeriesZip(username string, seriesUrlSlugList []string) (closeFunc, string, error) {
+func (v *VelogService) FetchSelectedSeriesZip(username string, seriesUrlSlugList []string) (closeFunc, string, error) {
 	fileHandler := file.NewFileHandler()
 	closeFunc := func() {
 		defer fileHandler.Close()
@@ -106,7 +106,7 @@ func FetchSelectedSeriesZip(username string, seriesUrlSlugList []string) (closeF
 
 	zipfileList := []*os.File{}
 	for _, seriesUrlSlug := range seriesUrlSlugList {
-		fileList, err := fetchSeries(fileHandler, username, seriesUrlSlug)
+		fileList, err := v.fetchSeries(fileHandler, username, seriesUrlSlug)
 		if err != nil {
 			return closeFunc, "", err
 		}
@@ -145,9 +145,9 @@ func FetchSelectedSeriesZip(username string, seriesUrlSlugList []string) (closeF
 	return closeFunc, zipFileName, nil
 }
 
-func FetchAllSeriesZip(username string) (closeFunc, string, error) {
+func (v *VelogService) FetchAllSeriesZip(username string) (closeFunc, string, error) {
 	logger := log.GetLogger()
-	seriesItemList, err := GetSeries(username)
+	seriesItemList, err := v.GetSeries(username)
 	if err != nil {
 		return func() {}, "", err
 	}
@@ -163,7 +163,7 @@ func FetchAllSeriesZip(username string) (closeFunc, string, error) {
 
 	zfhList := workerManager.Aggregate(cancel, seriesItemList,
 		func(vsi velog.VelogSeriesItem) *os.File {
-			fileList, err := fetchSeries(fileHandler, username, vsi.URLSlug)
+			fileList, err := v.fetchSeries(fileHandler, username, vsi.URLSlug)
 			if err != nil {
 				logger.Errorf("failed to fetch sereis: %v", err.Error())
 				return nil

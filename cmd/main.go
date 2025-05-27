@@ -13,10 +13,10 @@ import (
 
 func main() {
 	logger := log.GetLogger()
+	injector.Initialize()
 	if _, err := os.Stat(file.TEMP_DIR); os.IsNotExist(err) {
 		os.Mkdir(file.TEMP_DIR, 0755)
 	}
-	injector.Initialize()
 
 	logger.Info("App starts", zap.String("hellp", "world"))
 	server.Start(config.Manager.ConfigModel)
