@@ -4,9 +4,6 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/gyu-young-park/StoryShift/internal/injector"
-	v1statuscontroller "github.com/gyu-young-park/StoryShift/pkg/controller/v1/status"
-	v1velogcontroller "github.com/gyu-young-park/StoryShift/pkg/controller/v1/velog"
 	"github.com/gyu-young-park/StoryShift/pkg/log"
 )
 
@@ -21,20 +18,15 @@ type controllerManager struct {
 
 // TODO: change controller chaning like: c1.register(c2).register(c3)
 // AND the path will be like c1/c2/c3/api
-func NewControllerManager() *controllerManager {
+func NewControllerManager(controllers ...controller) *controllerManager {
 	logger := log.GetLogger()
 	c := controllerManager{
 		engine: gin.Default(),
 	}
 
-	v1Controllers := []controller{
-		v1statuscontroller.NewStatueController("/status", injector.Container.StatusService()),
-		v1velogcontroller.NewVelogController("/velog", injector.Container.VelogService()),
-	}
-
 	apiGroupList := []string{}
 	v1groupRouter := c.engine.Group("/v1")
-	for _, apiController := range v1Controllers {
+	for _, apiController := range controllers {
 		group := v1groupRouter.Group(apiController.GetAPIGroup())
 		apiController.RegisterAPI(group)
 		apiGroupList = append(apiGroupList, group.BasePath())

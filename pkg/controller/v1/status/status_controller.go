@@ -7,37 +7,37 @@ import (
 	servicestatus "github.com/gyu-young-park/StoryShift/pkg/service/status"
 )
 
-type statueController struct {
+type StatueController struct {
 	service  *servicestatus.StatusService
 	APIGroup string
 }
 
-func NewStatueController(apiGroup string, service *servicestatus.StatusService) *statueController {
-	return &statueController{
+func NewStatueController(service *servicestatus.StatusService) *StatueController {
+	return &StatueController{
 		service:  service,
-		APIGroup: apiGroup,
+		APIGroup: "/status",
 	}
 }
 
-func (s *statueController) GetAPIGroup() string {
+func (s *StatueController) GetAPIGroup() string {
 	return s.APIGroup
 }
 
-func (s *statueController) RegisterAPI(router *gin.RouterGroup) {
+func (s *StatueController) RegisterAPI(router *gin.RouterGroup) {
 	router.GET("/startup", s.startupCheckHandler)
 	router.GET("/health", s.livenessCheckHandler)
 	router.GET("/ready", s.readinessCheckHandler)
 }
 
-func (s *statueController) startupCheckHandler(c *gin.Context) {
+func (s *StatueController) startupCheckHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"status": "ok"})
 }
 
-func (s *statueController) livenessCheckHandler(c *gin.Context) {
+func (s *StatueController) livenessCheckHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"status": "health"})
 }
 
-func (s *statueController) readinessCheckHandler(c *gin.Context) {
+func (s *StatueController) readinessCheckHandler(c *gin.Context) {
 	if !s.service.Ready() {
 		c.JSON(http.StatusInternalServerError, gin.H{"err": "server is not ready"})
 		return

@@ -9,23 +9,23 @@ import (
 	servicevelog "github.com/gyu-young-park/StoryShift/pkg/service/velog"
 )
 
-type velogController struct {
+type VelogController struct {
 	service  *servicevelog.VelogService
 	APIGroup string
 }
 
-func NewVelogController(apiGroup string, service *servicevelog.VelogService) *velogController {
-	return &velogController{
+func NewVelogController(service *servicevelog.VelogService) *VelogController {
+	return &VelogController{
 		service:  service,
-		APIGroup: apiGroup,
+		APIGroup: "/velog",
 	}
 }
 
-func (v *velogController) GetAPIGroup() string {
+func (v *VelogController) GetAPIGroup() string {
 	return v.APIGroup
 }
 
-func (v *velogController) RegisterAPI(router *gin.RouterGroup) {
+func (v *VelogController) RegisterAPI(router *gin.RouterGroup) {
 	router.Use(validateVelogUser(v.service))
 	router.GET("/", v.checkVelogService)
 	router.GET("/:user", v.getUserProfile)
@@ -41,7 +41,7 @@ func (v *velogController) RegisterAPI(router *gin.RouterGroup) {
 	router.POST("/:user/series/download", v.downloadSelectedSeries)
 }
 
-func (v *velogController) checkVelogService(c *gin.Context) {
+func (v *VelogController) checkVelogService(c *gin.Context) {
 	if !v.service.IsVelogUserExists("velopert") {
 		c.JSON(http.StatusServiceUnavailable, gin.H{
 			"status": "not ready",
@@ -51,7 +51,7 @@ func (v *velogController) checkVelogService(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"status": "health"})
 }
 
-func (v *velogController) getPost(c *gin.Context) {
+func (v *VelogController) getPost(c *gin.Context) {
 	logger := log.GetLogger()
 	user := c.Param("user")
 	urlSlug := c.Param("url_slug")
@@ -71,7 +71,7 @@ func (v *velogController) getPost(c *gin.Context) {
 	})
 }
 
-func (v *velogController) getPosts(c *gin.Context) {
+func (v *VelogController) getPosts(c *gin.Context) {
 	logger := log.GetLogger()
 	user := c.Param("user")
 
@@ -102,7 +102,7 @@ func (v *velogController) getPosts(c *gin.Context) {
 	})
 }
 
-func (v *velogController) downloadPost(c *gin.Context) {
+func (v *VelogController) downloadPost(c *gin.Context) {
 	logger := log.GetLogger()
 	user := c.Param("user")
 
@@ -127,7 +127,7 @@ func (v *velogController) downloadPost(c *gin.Context) {
 	c.FileAttachment(zipFilename, filepath.Base(zipFilename))
 }
 
-func (v *velogController) downloadAllPosts(c *gin.Context) {
+func (v *VelogController) downloadAllPosts(c *gin.Context) {
 	logger := log.GetLogger()
 	user := c.Param("user")
 
@@ -142,7 +142,7 @@ func (v *velogController) downloadAllPosts(c *gin.Context) {
 	c.FileAttachment(zipFilename, filepath.Base(zipFilename))
 }
 
-func (v *velogController) downloadSelectedPosts(c *gin.Context) {
+func (v *VelogController) downloadSelectedPosts(c *gin.Context) {
 	logger := log.GetLogger()
 	user := c.Param("user")
 	var req []VelogDownloadPostRequestModel
@@ -167,7 +167,7 @@ func (v *velogController) downloadSelectedPosts(c *gin.Context) {
 	c.FileAttachment(zipFilename, filepath.Base(zipFilename))
 }
 
-func (v *velogController) getSeries(c *gin.Context) {
+func (v *VelogController) getSeries(c *gin.Context) {
 	user := c.Param("user")
 	series, err := v.service.GetSeries(user)
 	if err != nil {
@@ -180,7 +180,7 @@ func (v *velogController) getSeries(c *gin.Context) {
 	})
 }
 
-func (v *velogController) getPostsInSeries(c *gin.Context) {
+func (v *VelogController) getPostsInSeries(c *gin.Context) {
 	logger := log.GetLogger()
 	user := c.Param("user")
 	seriesUrlSlug := c.Param("url_slug")
@@ -195,7 +195,7 @@ func (v *velogController) getPostsInSeries(c *gin.Context) {
 	c.JSON(http.StatusOK, postsInSeries)
 }
 
-func (v *velogController) downloadSeries(c *gin.Context) {
+func (v *VelogController) downloadSeries(c *gin.Context) {
 	user := c.Param("user")
 	seriesUrlSlug := c.Param("url_slug")
 
@@ -209,7 +209,7 @@ func (v *velogController) downloadSeries(c *gin.Context) {
 	c.FileAttachment(zipFilename, filepath.Base(zipFilename))
 }
 
-func (v *velogController) downloadSelectedSeries(c *gin.Context) {
+func (v *VelogController) downloadSelectedSeries(c *gin.Context) {
 	user := c.Param("user")
 
 	var req []VelogDownloadSelectedSeriesRequestModel
@@ -233,7 +233,7 @@ func (v *velogController) downloadSelectedSeries(c *gin.Context) {
 	c.FileAttachment(zipFilename, filepath.Base(zipFilename))
 }
 
-func (v *velogController) downloadAllSeries(c *gin.Context) {
+func (v *VelogController) downloadAllSeries(c *gin.Context) {
 	user := c.Param("user")
 
 	closeFunc, zipFilename, err := v.service.FetchAllSeriesZip(user)
@@ -246,7 +246,7 @@ func (v *velogController) downloadAllSeries(c *gin.Context) {
 	c.FileAttachment(zipFilename, filepath.Base(zipFilename))
 }
 
-func (v *velogController) getUserProfile(c *gin.Context) {
+func (v *VelogController) getUserProfile(c *gin.Context) {
 	user := c.Param("user")
 
 	userProfile, err := v.service.GetUserProfile(user)

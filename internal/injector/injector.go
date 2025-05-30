@@ -3,6 +3,8 @@ package injector
 import (
 	"github.com/gyu-young-park/StoryShift/internal/cache"
 	"github.com/gyu-young-park/StoryShift/internal/config"
+	v1statuscontroller "github.com/gyu-young-park/StoryShift/pkg/controller/v1/status"
+	v1velogcontroller "github.com/gyu-young-park/StoryShift/pkg/controller/v1/velog"
 	servicestatus "github.com/gyu-young-park/StoryShift/pkg/service/status"
 	servicevelog "github.com/gyu-young-park/StoryShift/pkg/service/velog"
 	"github.com/redis/go-redis/v9"
@@ -11,17 +13,24 @@ import (
 var Container *container = nil
 
 type container struct {
-	statusService *servicestatus.StatusService
-	velogService  *servicevelog.VelogService
-	redisClient   *redis.Client
+	v1velogController  *v1velogcontroller.VelogController
+	v1statusController *v1statuscontroller.StatueController
+	statusService      *servicestatus.StatusService
+	velogService       *servicevelog.VelogService
+	redisClient        *redis.Client
 }
 
 func Initialize() {
 	redisClient := redisClient()
+	velogService := servicevelog.NewVelogService(redisClient)
+	statusService := servicestatus.NewStatusService(redisClient)
+
 	Container = &container{
-		statusService: servicestatus.NewStatusService(redisClient),
-		velogService:  servicevelog.NewVelogService(redisClient),
-		redisClient:   redisClient,
+		v1statusController: v1statuscontroller.NewStatueController(statusService),
+		v1velogController:  v1velogcontroller.NewVelogController(velogService),
+		statusService:      statusService,
+		velogService:       velogService,
+		redisClient:        redisClient,
 	}
 }
 
@@ -35,6 +44,14 @@ func (c *container) VelogService() *servicevelog.VelogService {
 
 func (c *container) StatusService() *servicestatus.StatusService {
 	return c.statusService
+}
+
+func (c *container) V1StatusController() *v1statuscontroller.StatueController {
+	return c.v1statusController
+}
+
+func (c *container) V1VelogController() *v1velogcontroller.VelogController {
+	return c.v1velogController
 }
 
 func redisClient() *redis.Client {
