@@ -2,6 +2,7 @@ package servicevelog
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 
@@ -14,11 +15,27 @@ import (
 
 func (v *VelogService) GetPost(username, urlSlug string) (velog.VelogPost, error) {
 	velogApi := velog.NewVelogAPI(config.Manager.VelogConfig.ApiUrl, username)
-	velogPost, err := velogApi.Post(urlSlug)
+	post, err := v.cache(fmt.Sprintf("%s-%s", username, urlSlug), func() (string, error) {
+		p, err := velogApi.Post(urlSlug)
+		if err != nil {
+			return "", err
+		}
+
+		b, err := json.Marshal(p)
+
+		if err != nil {
+			return "", err
+		}
+
+		return string(b), err
+	})
+
+	var velogPost velog.VelogPost
 	if err != nil {
-		return velog.VelogPost{}, err
+		return velogPost, err
 	}
 
+	json.Unmarshal([]byte(post), &velogPost)
 	return velogPost, nil
 }
 
