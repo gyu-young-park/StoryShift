@@ -38,7 +38,7 @@ func (v *VelogService) cache(key string, fetchFunc func() (string, error)) (stri
 		}
 
 		data = string(ret)
-		v.redisClient.Set(ctx, key, ret, time.Second*3)
+		v.redisClient.Set(ctx, key, ret, time.Minute*3)
 	}
 
 	return data, nil

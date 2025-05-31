@@ -2,6 +2,7 @@ package servicevelog
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 
@@ -14,35 +15,56 @@ import (
 
 func (v *VelogService) GetSeries(username string) (velog.VelogSeriesItemList, error) {
 	velogApi := velog.NewVelogAPI(config.Manager.VelogConfig.ApiUrl, username)
+	seriesList, err := v.cache(fmt.Sprintf("%s-%s", username, "series"), func() (string, error) {
+		series, err := velogApi.Series()
+		if err != nil {
+			return "", err
+		}
 
-	seriesList, err := velogApi.Series()
+		bSeries, _ := json.Marshal(series)
+		return string(bSeries), nil
+	})
+
+	var seriesListModel velog.VelogSeriesItemList
 	if err != nil {
-		return velog.VelogSeriesItemList{}, err
+		return seriesListModel, err
 	}
 
-	return seriesList, nil
+	json.Unmarshal([]byte(seriesList), &seriesListModel)
+	return seriesListModel, nil
 }
 
 func (v *VelogService) GetPostsInSereis(username, seriesUrlSlug string) (PostsInSeriesModel, error) {
 	velogApi := velog.NewVelogAPI(config.Manager.VelogConfig.ApiUrl, username)
-	readSeriesList, err := velogApi.ReadSeries(seriesUrlSlug)
-	if err != nil {
-		return PostsInSeriesModel{}, err
-	}
-
-	postInSeriesModel := PostsInSeriesModel{
-		VelogSeriesBase: readSeriesList.VelogSeriesBase,
-		Posts:           []velog.VelogPost{},
-	}
-
-	for _, postInSeries := range readSeriesList.Posts {
-		post, err := velogApi.Post(postInSeries.URLSlug)
+	postInSeries, err := v.cache(fmt.Sprintf("%s-%s-%s", "series", username, seriesUrlSlug), func() (string, error) {
+		readSeriesList, err := velogApi.ReadSeries(seriesUrlSlug)
 		if err != nil {
-			return PostsInSeriesModel{}, nil
+			return "", err
 		}
-		postInSeriesModel.Posts = append(postInSeriesModel.Posts, post)
+
+		postInSeriesModel := PostsInSeriesModel{
+			VelogSeriesBase: readSeriesList.VelogSeriesBase,
+			Posts:           []velog.VelogPost{},
+		}
+
+		for _, postInSeries := range readSeriesList.Posts {
+			post, err := velogApi.Post(postInSeries.URLSlug)
+			if err != nil {
+				return "", nil
+			}
+			postInSeriesModel.Posts = append(postInSeriesModel.Posts, post)
+		}
+
+		bPostInSeriesModel, _ := json.Marshal(postInSeriesModel)
+		return string(bPostInSeriesModel), nil
+	})
+
+	var postInSeriesModel PostsInSeriesModel
+	if err != nil {
+		return postInSeriesModel, err
 	}
 
+	json.Unmarshal([]byte(postInSeries), &postInSeriesModel)
 	return postInSeriesModel, nil
 }
 
