@@ -167,29 +167,36 @@ func (v *VelogService) FetchAllVelogPostsZip(username string) (closeFunc, string
 
 func (v *VelogService) getAllPosts(velogApi *velog.VelogAPI) velog.VelogPostsItemList {
 	logger := log.GetLogger()
-	velogPosts := velog.VelogPostsItemList{}
 	cursor := ""
-	for {
-		posts, err := velogApi.Posts(cursor, 50)
-		velogPosts = append(velogPosts, posts...)
-		if err != nil {
-			logger.Errorf("failed to get posts: %s", err)
-			break
+	velogPosts, err := v.cache(fmt.Sprintf("%s-%s", velogApi.Username, "post-all"), func() (string, error) {
+		velogPosts := velog.VelogPostsItemList{}
+		for {
+			posts, err := velogApi.Posts(cursor, 50)
+			velogPosts = append(velogPosts, posts...)
+			if err != nil {
+				logger.Errorf("failed to get posts: %s", err)
+				break
+			}
+
+			if len(posts) == 0 {
+				break
+			}
+
+			cursor = posts[len(posts)-1].ID
 		}
 
-		if len(posts) == 0 {
-			break
-		}
+		bVelogPosts, _ := json.Marshal(velogPosts)
+		return string(bVelogPosts), nil
+	})
 
-		lastPost := posts[len(posts)-1]
-		post, err := velogApi.Post(lastPost.UrlSlug)
-		if err != nil {
-			logger.Errorf("failed to get post: %s", err)
-			break
-		}
-		cursor = post.ID
+	var ret velog.VelogPostsItemList
+	if err != nil {
+		logger.Errorf(err.Error())
+		return ret
 	}
-	return velogPosts
+
+	json.Unmarshal([]byte(velogPosts), &ret)
+	return ret
 }
 
 func (v *VelogService) FetchSelectedVelogPostsZip(username string, urlSlugList []string) (closeFunc, string, error) {
