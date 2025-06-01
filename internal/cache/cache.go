@@ -8,57 +8,88 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-type CacheOpt struct {
-	Timeout time.Duration
-	Key     string
-	Refresh bool
+var (
+	CacheOptBuilder cacheOptBuilder = cacheOptBuilder{opt: &cacheOpt{}}
+)
+
+type cacheOpt struct {
+	ctx     context.Context
+	timeout time.Duration
+	TTL     time.Duration
+	key     string
+	refresh bool
 }
 
-type CacheOptBuilder struct {
-	opt *CacheOpt
+type cacheOptBuilder struct {
+	opt *cacheOpt
 }
 
-func (c *CacheOptBuilder) Timeout(t time.Duration) *CacheOptBuilder {
-	c.opt.Timeout = t
+func (c *cacheOptBuilder) TTL(t time.Duration) *cacheOptBuilder {
+	c.opt.TTL = t
 	return c
 }
 
-func (c *CacheOptBuilder) Refresh(isRefresh bool) *CacheOptBuilder {
-	c.opt.Refresh = isRefresh
+func (c *cacheOptBuilder) Timeout(t time.Duration) *cacheOptBuilder {
+	c.opt.timeout = t
 	return c
 }
 
-func (c *CacheOptBuilder) Build(key string) CacheOpt {
-	if c.opt.Timeout == 0 {
-		c.opt.Timeout = time.Minute * 5
+func (c *cacheOptBuilder) Refresh(isRefresh bool) *cacheOptBuilder {
+	c.opt.refresh = isRefresh
+	return c
+}
+
+func (c *cacheOptBuilder) Build(key string) cacheOpt {
+	if c.opt.TTL == 0 {
+		c.opt.TTL = time.Minute * 5
 	}
-	c.opt.Key = key
-	return *c.opt
+
+	if c.opt.timeout == 0 {
+		c.opt.timeout = time.Second * 2
+	}
+	c.opt.key = key
+
+	ctx, _ := context.WithTimeout(context.Background(), c.opt.timeout)
+	c.opt.ctx = ctx
+
+	return c.cleanAndReturn()
+}
+
+func (c *cacheOptBuilder) cleanAndReturn() cacheOpt {
+	ret := *c.opt
+	c.opt = &cacheOpt{}
+
+	return ret
 }
 
 type CacheManager struct {
 	core *redis.Client
 }
 
-func (c *CacheManager) getValueOrSet(ctx context.Context, opt CacheOpt, fetchFunc func() (string, error)) (string, error) {
-	data, err := c.core.Get(ctx, opt.Key).Result()
-	if err == redis.Nil || opt.Refresh {
+func NewCacheManager(client *redis.Client) *CacheManager {
+	return &CacheManager{
+		core: client,
+	}
+}
+
+func (c *CacheManager) getValueOrSet(opt cacheOpt, fetchFunc func() (string, error)) (string, error) {
+	data, err := c.core.Get(opt.ctx, opt.key).Result()
+	if err == redis.Nil || opt.refresh {
 		data, err = fetchFunc()
 		if err != nil {
 			return data, err
 		}
-		c.core.Set(ctx, opt.Key, data, opt.Timeout)
+		c.core.Set(opt.ctx, opt.key, data, opt.TTL)
 	} else {
-		ttl, _ := c.core.TTL(ctx, opt.Key).Result()
+		ttl, _ := c.core.TTL(opt.ctx, opt.key).Result()
 		if ttl >= 0 {
-			c.core.Set(ctx, opt.Key, data, opt.Timeout)
+			c.core.Set(opt.ctx, opt.key, data, opt.TTL)
 		}
 	}
-
 	return data, err
 }
 
-func (c *CacheManager) CallWithCache(ctx context.Context, opt CacheOpt, fetchFunc func() (string, error)) (string, error) {
+func (c *CacheManager) CallWithCache(opt cacheOpt, fetchFunc func() (string, error)) (string, error) {
 	logger := log.GetLogger()
 	if c.core == nil {
 		logger.Debug("there is no redis client")
@@ -69,7 +100,7 @@ func (c *CacheManager) CallWithCache(ctx context.Context, opt CacheOpt, fetchFun
 		return data, err
 	}
 
-	data, err := c.getValueOrSet(ctx, opt, fetchFunc)
+	data, err := c.getValueOrSet(opt, fetchFunc)
 	if err != nil {
 		return data, err
 	}

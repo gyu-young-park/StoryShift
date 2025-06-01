@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"time"
 
+	"github.com/gyu-young-park/StoryShift/internal/cache"
 	"github.com/gyu-young-park/StoryShift/internal/config"
 	"github.com/gyu-young-park/StoryShift/pkg/file"
 	"github.com/gyu-young-park/StoryShift/pkg/log"
@@ -15,7 +17,9 @@ import (
 
 func (v *VelogService) GetPost(username, urlSlug string) (velog.VelogPost, error) {
 	velogApi := velog.NewVelogAPI(config.Manager.VelogConfig.ApiUrl, username)
-	post, err := v.callWithCache(fmt.Sprintf("%s-%s", username, urlSlug), func() (string, error) {
+	opt := cache.CacheOptBuilder.Timeout(time.Second * 2).TTL(time.Minute * 10).Build(fmt.Sprintf("%s-%s", username, urlSlug))
+
+	post, err := v.cacheManager.CallWithCache(opt, func() (string, error) {
 		p, err := velogApi.Post(urlSlug)
 		if err != nil {
 			return "", err
@@ -168,7 +172,9 @@ func (v *VelogService) FetchAllVelogPostsZip(username string) (closeFunc, string
 func (v *VelogService) getAllPosts(velogApi *velog.VelogAPI) velog.VelogPostsItemList {
 	logger := log.GetLogger()
 	cursor := ""
-	velogPosts, err := v.callWithCache(fmt.Sprintf("%s-%s", velogApi.Username, "post-all"), func() (string, error) {
+
+	opt := cache.CacheOptBuilder.Timeout(time.Second * 2).TTL(time.Minute * 10).Build(fmt.Sprintf("%s-%s", velogApi.Username, "post-all"))
+	velogPosts, err := v.cacheManager.CallWithCache(opt, func() (string, error) {
 		velogPosts := velog.VelogPostsItemList{}
 		for {
 			posts, err := velogApi.Posts(cursor, 50)

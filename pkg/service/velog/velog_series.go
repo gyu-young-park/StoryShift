@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"time"
 
+	"github.com/gyu-young-park/StoryShift/internal/cache"
 	"github.com/gyu-young-park/StoryShift/internal/config"
 	"github.com/gyu-young-park/StoryShift/pkg/file"
 	"github.com/gyu-young-park/StoryShift/pkg/log"
@@ -15,7 +17,8 @@ import (
 
 func (v *VelogService) GetSeries(username string) (velog.VelogSeriesItemList, error) {
 	velogApi := velog.NewVelogAPI(config.Manager.VelogConfig.ApiUrl, username)
-	seriesList, err := v.callWithCache(fmt.Sprintf("%s-%s", username, "series"), func() (string, error) {
+	opt := cache.CacheOptBuilder.Timeout(time.Second * 2).TTL(time.Minute * 10).Build(fmt.Sprintf("%s-%s", username, "series"))
+	seriesList, err := v.cacheManager.CallWithCache(opt, func() (string, error) {
 		series, err := velogApi.Series()
 		if err != nil {
 			return "", err
@@ -36,7 +39,8 @@ func (v *VelogService) GetSeries(username string) (velog.VelogSeriesItemList, er
 
 func (v *VelogService) GetPostsInSereis(username, seriesUrlSlug string) (PostsInSeriesModel, error) {
 	velogApi := velog.NewVelogAPI(config.Manager.VelogConfig.ApiUrl, username)
-	postInSeries, err := v.callWithCache(fmt.Sprintf("%s-%s-%s", "series", username, seriesUrlSlug), func() (string, error) {
+	opt := cache.CacheOptBuilder.Timeout(time.Second * 2).TTL(time.Minute * 10).Build(fmt.Sprintf("%s-%s-%s", "series", username, seriesUrlSlug))
+	postInSeries, err := v.cacheManager.CallWithCache(opt, func() (string, error) {
 		readSeriesList, err := velogApi.ReadSeries(seriesUrlSlug)
 		if err != nil {
 			return "", err
