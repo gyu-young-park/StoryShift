@@ -114,7 +114,9 @@ post.zip
 
 - request
 ```sh
-http://localhost:9596/v1/velog/chappi/posts/download
+http://localhost:9596/v1/velog/chappi/posts/download?refresh=false
+
+1. refresh: `true` or `false`, it means that server have to get all the posts from cache or velog server
 ```
 
 - response
@@ -219,7 +221,9 @@ eBPF.zip
 
 - request
 ```sh
-http://localhost:9596/v1/velog/chappi/series/download
+http://localhost:9596/v1/velog/chappi/series/download?refresh=false
+
+1. refresh: `true` or `false`, it means that server have to get all the posts from cache or velog server
 ```
 
 10. select the series that is to donwload

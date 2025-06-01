@@ -15,7 +15,6 @@ func (v *VelogService) GetUserProfile(username string) (velog.VelogUserProfile, 
 	if err != nil {
 		return velog.VelogUserProfile{}, err
 	}
-
 	return userProfile, nil
 }
 
