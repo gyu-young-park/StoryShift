@@ -39,9 +39,7 @@ func (v *VelogService) callWithCache(key string, fetchFunc func() (string, error
 		if err != nil {
 			return "", err
 		}
-
 		v.redisClient.Set(ctx, key, ret, time.Minute*3)
 	}
-
 	return data, nil
 }
