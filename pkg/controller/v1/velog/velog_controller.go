@@ -3,6 +3,7 @@ package v1velogcontroller
 import (
 	"net/http"
 	"path/filepath"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gyu-young-park/StoryShift/pkg/log"
@@ -131,7 +132,13 @@ func (v *VelogController) downloadAllPosts(c *gin.Context) {
 	logger := log.GetLogger()
 	user := c.Param("user")
 
-	closeFunc, zipFilename, err := v.service.FetchAllVelogPostsZip(user)
+	refresh := c.Query("refresh")
+	isRefresh, err := strconv.ParseBool(refresh)
+	if err != nil {
+		isRefresh = false
+	}
+
+	closeFunc, zipFilename, err := v.service.FetchAllVelogPostsZip(user, isRefresh)
 	defer closeFunc()
 	if err != nil {
 		logger.Errorf("server error occureed: %s", err)
@@ -169,7 +176,7 @@ func (v *VelogController) downloadSelectedPosts(c *gin.Context) {
 
 func (v *VelogController) getSeries(c *gin.Context) {
 	user := c.Param("user")
-	series, err := v.service.GetSeries(user)
+	series, err := v.service.GetSeries(user, false)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -186,7 +193,7 @@ func (v *VelogController) getPostsInSeries(c *gin.Context) {
 	seriesUrlSlug := c.Param("url_slug")
 	logger.Infof("[readSeries] user: %v,seriesUrlSlug: %v", user, seriesUrlSlug)
 
-	postsInSeries, err := v.service.GetPostsInSereis(user, seriesUrlSlug)
+	postsInSeries, err := v.service.GetPostsInSereis(user, seriesUrlSlug, false)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"err": err})
 		return
@@ -235,8 +242,13 @@ func (v *VelogController) downloadSelectedSeries(c *gin.Context) {
 
 func (v *VelogController) downloadAllSeries(c *gin.Context) {
 	user := c.Param("user")
+	refresh := c.Query("refresh")
+	isRefresh, err := strconv.ParseBool(refresh)
+	if err != nil {
+		isRefresh = false
+	}
 
-	closeFunc, zipFilename, err := v.service.FetchAllSeriesZip(user)
+	closeFunc, zipFilename, err := v.service.FetchAllSeriesZip(user, isRefresh)
 	defer closeFunc()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"err": err})

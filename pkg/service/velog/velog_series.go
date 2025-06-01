@@ -15,18 +15,22 @@ import (
 	"github.com/gyu-young-park/StoryShift/pkg/worker"
 )
 
-func (v *VelogService) GetSeries(username string) (velog.VelogSeriesItemList, error) {
+func (v *VelogService) GetSeries(username string, isRefresh bool) (velog.VelogSeriesItemList, error) {
 	velogApi := velog.NewVelogAPI(config.Manager.VelogConfig.ApiUrl, username)
-	opt := cache.CacheOptBuilder.Timeout(time.Second * 2).TTL(time.Minute * 10).Build(fmt.Sprintf("%s-%s", username, "series"))
-	seriesList, err := v.cacheManager.CallWithCache(opt, func() (string, error) {
-		series, err := velogApi.Series()
-		if err != nil {
-			return "", err
-		}
+	seriesList, err := v.cacheManager.CallWithCache(cache.CacheOptBuilder.
+		Timeout(time.Second*2).
+		TTL(time.Minute*10).
+		Refresh(isRefresh).
+		Build(fmt.Sprintf("%s-%s", username, "series")),
+		func() (string, error) {
+			series, err := velogApi.Series()
+			if err != nil {
+				return "", err
+			}
 
-		bSeries, _ := json.Marshal(series)
-		return string(bSeries), nil
-	})
+			bSeries, _ := json.Marshal(series)
+			return string(bSeries), nil
+		})
 
 	var seriesListModel velog.VelogSeriesItemList
 	if err != nil {
@@ -37,31 +41,35 @@ func (v *VelogService) GetSeries(username string) (velog.VelogSeriesItemList, er
 	return seriesListModel, nil
 }
 
-func (v *VelogService) GetPostsInSereis(username, seriesUrlSlug string) (PostsInSeriesModel, error) {
+func (v *VelogService) GetPostsInSereis(username, seriesUrlSlug string, isRefresh bool) (PostsInSeriesModel, error) {
 	velogApi := velog.NewVelogAPI(config.Manager.VelogConfig.ApiUrl, username)
-	opt := cache.CacheOptBuilder.Timeout(time.Second * 2).TTL(time.Minute * 10).Build(fmt.Sprintf("%s-%s-%s", "series", username, seriesUrlSlug))
-	postInSeries, err := v.cacheManager.CallWithCache(opt, func() (string, error) {
-		readSeriesList, err := velogApi.ReadSeries(seriesUrlSlug)
-		if err != nil {
-			return "", err
-		}
-
-		postInSeriesModel := PostsInSeriesModel{
-			VelogSeriesBase: readSeriesList.VelogSeriesBase,
-			Posts:           []velog.VelogPost{},
-		}
-
-		for _, postInSeries := range readSeriesList.Posts {
-			post, err := velogApi.Post(postInSeries.URLSlug)
+	postInSeries, err := v.cacheManager.CallWithCache(cache.CacheOptBuilder.
+		Timeout(time.Second*2).
+		TTL(time.Minute*10).
+		Refresh(isRefresh).
+		Build(fmt.Sprintf("%s-%s-%s", "series", username, seriesUrlSlug)),
+		func() (string, error) {
+			readSeriesList, err := velogApi.ReadSeries(seriesUrlSlug)
 			if err != nil {
-				return "", nil
+				return "", err
 			}
-			postInSeriesModel.Posts = append(postInSeriesModel.Posts, post)
-		}
 
-		bPostInSeriesModel, _ := json.Marshal(postInSeriesModel)
-		return string(bPostInSeriesModel), nil
-	})
+			postInSeriesModel := PostsInSeriesModel{
+				VelogSeriesBase: readSeriesList.VelogSeriesBase,
+				Posts:           []velog.VelogPost{},
+			}
+
+			for _, postInSeries := range readSeriesList.Posts {
+				post, err := velogApi.Post(postInSeries.URLSlug)
+				if err != nil {
+					return "", nil
+				}
+				postInSeriesModel.Posts = append(postInSeriesModel.Posts, post)
+			}
+
+			bPostInSeriesModel, _ := json.Marshal(postInSeriesModel)
+			return string(bPostInSeriesModel), nil
+		})
 
 	var postInSeriesModel PostsInSeriesModel
 	if err != nil {
@@ -72,8 +80,8 @@ func (v *VelogService) GetPostsInSereis(username, seriesUrlSlug string) (PostsIn
 	return postInSeriesModel, nil
 }
 
-func (v *VelogService) fetchSeries(fileHandler *file.FileHandler, username string, seriesUrlSlug string) ([]*os.File, error) {
-	postsInSeriesModel, err := v.GetPostsInSereis(username, seriesUrlSlug)
+func (v *VelogService) fetchSeries(fileHandler *file.FileHandler, username string, seriesUrlSlug string, isRefresh bool) ([]*os.File, error) {
+	postsInSeriesModel, err := v.GetPostsInSereis(username, seriesUrlSlug, isRefresh)
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +111,7 @@ func (v *VelogService) FetchSeriesZip(username string, seriesUrlSlug string) (cl
 		defer fileHandler.Close()
 	}
 
-	zipfileList, err := v.fetchSeries(fileHandler, username, seriesUrlSlug)
+	zipfileList, err := v.fetchSeries(fileHandler, username, seriesUrlSlug, false)
 	if err != nil {
 		return closeFunc, "", err
 	}
@@ -132,7 +140,7 @@ func (v *VelogService) FetchSelectedSeriesZip(username string, seriesUrlSlugList
 
 	zipfileList := []*os.File{}
 	for _, seriesUrlSlug := range seriesUrlSlugList {
-		fileList, err := v.fetchSeries(fileHandler, username, seriesUrlSlug)
+		fileList, err := v.fetchSeries(fileHandler, username, seriesUrlSlug, false)
 		if err != nil {
 			return closeFunc, "", err
 		}
@@ -171,9 +179,9 @@ func (v *VelogService) FetchSelectedSeriesZip(username string, seriesUrlSlugList
 	return closeFunc, zipFileName, nil
 }
 
-func (v *VelogService) FetchAllSeriesZip(username string) (closeFunc, string, error) {
+func (v *VelogService) FetchAllSeriesZip(username string, isRefresh bool) (closeFunc, string, error) {
 	logger := log.GetLogger()
-	seriesItemList, err := v.GetSeries(username)
+	seriesItemList, err := v.GetSeries(username, isRefresh)
 	if err != nil {
 		return func() {}, "", err
 	}
@@ -189,7 +197,7 @@ func (v *VelogService) FetchAllSeriesZip(username string) (closeFunc, string, er
 
 	zfhList := workerManager.Aggregate(cancel, seriesItemList,
 		func(vsi velog.VelogSeriesItem) *os.File {
-			fileList, err := v.fetchSeries(fileHandler, username, vsi.URLSlug)
+			fileList, err := v.fetchSeries(fileHandler, username, vsi.URLSlug, isRefresh)
 			if err != nil {
 				logger.Errorf("failed to fetch sereis: %v", err.Error())
 				return nil
