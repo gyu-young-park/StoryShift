@@ -15,7 +15,7 @@ import (
 
 func (v *VelogService) GetSeries(username string) (velog.VelogSeriesItemList, error) {
 	velogApi := velog.NewVelogAPI(config.Manager.VelogConfig.ApiUrl, username)
-	seriesList, err := v.cache(fmt.Sprintf("%s-%s", username, "series"), func() (string, error) {
+	seriesList, err := v.callWithCache(fmt.Sprintf("%s-%s", username, "series"), func() (string, error) {
 		series, err := velogApi.Series()
 		if err != nil {
 			return "", err
@@ -36,7 +36,7 @@ func (v *VelogService) GetSeries(username string) (velog.VelogSeriesItemList, er
 
 func (v *VelogService) GetPostsInSereis(username, seriesUrlSlug string) (PostsInSeriesModel, error) {
 	velogApi := velog.NewVelogAPI(config.Manager.VelogConfig.ApiUrl, username)
-	postInSeries, err := v.cache(fmt.Sprintf("%s-%s-%s", "series", username, seriesUrlSlug), func() (string, error) {
+	postInSeries, err := v.callWithCache(fmt.Sprintf("%s-%s-%s", "series", username, seriesUrlSlug), func() (string, error) {
 		readSeriesList, err := velogApi.ReadSeries(seriesUrlSlug)
 		if err != nil {
 			return "", err

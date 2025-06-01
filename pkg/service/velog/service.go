@@ -2,14 +2,10 @@ package servicevelog
 
 import (
 	"context"
-	"errors"
 	"time"
 
+	"github.com/gyu-young-park/StoryShift/pkg/log"
 	"github.com/redis/go-redis/v9"
-)
-
-var (
-	ErrRedisNotExists = errors.New("there is no redis client")
 )
 
 type VelogService struct {
@@ -22,9 +18,16 @@ func NewVelogService(client *redis.Client) *VelogService {
 	}
 }
 
-func (v *VelogService) cache(key string, fetchFunc func() (string, error)) (string, error) {
+func (v *VelogService) callWithCache(key string, fetchFunc func() (string, error)) (string, error) {
+	logger := log.GetLogger()
 	if v.redisClient == nil {
-		return "", ErrRedisNotExists
+		logger.Debug("there is no redis client")
+		ret, err := fetchFunc()
+		if err != nil {
+			return "", err
+		}
+
+		return ret, nil
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
@@ -37,7 +40,6 @@ func (v *VelogService) cache(key string, fetchFunc func() (string, error)) (stri
 			return "", err
 		}
 
-		data = string(ret)
 		v.redisClient.Set(ctx, key, ret, time.Minute*3)
 	}
 

@@ -15,7 +15,7 @@ import (
 
 func (v *VelogService) GetPost(username, urlSlug string) (velog.VelogPost, error) {
 	velogApi := velog.NewVelogAPI(config.Manager.VelogConfig.ApiUrl, username)
-	post, err := v.cache(fmt.Sprintf("%s-%s", username, urlSlug), func() (string, error) {
+	post, err := v.callWithCache(fmt.Sprintf("%s-%s", username, urlSlug), func() (string, error) {
 		p, err := velogApi.Post(urlSlug)
 		if err != nil {
 			return "", err
@@ -168,7 +168,7 @@ func (v *VelogService) FetchAllVelogPostsZip(username string) (closeFunc, string
 func (v *VelogService) getAllPosts(velogApi *velog.VelogAPI) velog.VelogPostsItemList {
 	logger := log.GetLogger()
 	cursor := ""
-	velogPosts, err := v.cache(fmt.Sprintf("%s-%s", velogApi.Username, "post-all"), func() (string, error) {
+	velogPosts, err := v.callWithCache(fmt.Sprintf("%s-%s", velogApi.Username, "post-all"), func() (string, error) {
 		velogPosts := velog.VelogPostsItemList{}
 		for {
 			posts, err := velogApi.Posts(cursor, 50)
