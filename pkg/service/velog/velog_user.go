@@ -3,15 +3,13 @@ package servicevelog
 import (
 	"net/http"
 
-	"github.com/gyu-young-park/StoryShift/internal/config"
 	"github.com/gyu-young-park/StoryShift/internal/httpclient"
 	"github.com/gyu-young-park/StoryShift/pkg/log"
 	"github.com/gyu-young-park/StoryShift/pkg/velog"
 )
 
 func (v *VelogService) GetUserProfile(username string) (velog.VelogUserProfile, error) {
-	velogApi := velog.NewVelogAPI(config.Manager.VelogConfig.ApiUrl)
-	userProfile, err := velogApi.UserProfile(username)
+	userProfile, err := v.velogAPI.UserProfile(username)
 	if err != nil {
 		return velog.VelogUserProfile{}, err
 	}
@@ -20,7 +18,6 @@ func (v *VelogService) GetUserProfile(username string) (velog.VelogUserProfile, 
 
 func (v *VelogService) IsVelogUserExists(username string) bool {
 	logger := log.GetLogger()
-
 	resp, err := httpclient.Get(httpclient.GetRequestParam{
 		URL: "https://velog.io/@" + username,
 	})
