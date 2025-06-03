@@ -16,14 +16,14 @@ import (
 )
 
 func (v *VelogService) GetPost(username, urlSlug string) (velog.VelogPost, error) {
-	velogApi := velog.NewVelogAPI(config.Manager.VelogConfig.ApiUrl, username)
+	velogApi := velog.NewVelogAPI(config.Manager.VelogConfig.ApiUrl)
 
 	post, err := v.cacheManager.CallWithCache(cache.CacheOptBuilder.
 		Timeout(time.Second*2).
 		TTL(time.Minute*10).
 		Build(fmt.Sprintf("%s-%s", username, urlSlug)),
 		func() (string, error) {
-			p, err := velogApi.Post(urlSlug)
+			p, err := velogApi.Post(username, urlSlug)
 			if err != nil {
 				return "", err
 			}
@@ -47,8 +47,8 @@ func (v *VelogService) GetPost(username, urlSlug string) (velog.VelogPost, error
 }
 
 func (v *VelogService) GetPosts(username, postId string, count int) (velog.VelogPostsItemList, error) {
-	velogApi := velog.NewVelogAPI(config.Manager.VelogConfig.ApiUrl, username)
-	posts, err := velogApi.Posts(postId, count)
+	velogApi := velog.NewVelogAPI(config.Manager.VelogConfig.ApiUrl)
+	posts, err := velogApi.Posts(username, postId, count)
 	if err != nil {
 		return velog.VelogPostsItemList{}, err
 	}
@@ -59,8 +59,8 @@ func (v *VelogService) GetPosts(username, postId string, count int) (velog.Velog
 type closeFunc func()
 
 func (v *VelogService) FetchVelogPostZip(username, postId string) (closeFunc, string, error) {
-	velogApi := velog.NewVelogAPI(config.Manager.VelogConfig.ApiUrl, username)
-	velogPost, err := velogApi.Post(postId)
+	velogApi := velog.NewVelogAPI(config.Manager.VelogConfig.ApiUrl)
+	velogPost, err := velogApi.Post(username, postId)
 
 	if err != nil {
 		return func() {}, "", err
@@ -92,7 +92,7 @@ type RenamedFileJSON struct {
 
 func (v *VelogService) FetchAllVelogPostsZip(username string, isRefresh bool) (closeFunc, string, error) {
 	logger := log.GetLogger()
-	velogApi := velog.NewVelogAPI(config.Manager.VelogConfig.ApiUrl, username)
+	velogApi := velog.NewVelogAPI(config.Manager.VelogConfig.ApiUrl)
 	fileHandler := file.NewFileHandler()
 
 	closeFunc := func() {
@@ -119,10 +119,10 @@ func (v *VelogService) FetchAllVelogPostsZip(username string, isRefresh bool) (c
 	workerManager := worker.NewWorkerManager[velog.VelogPostsItem, string](ctx, fmt.Sprintf("%s-%s", "velog-post-zip", username), 5)
 	defer workerManager.Close()
 
-	posts := v.getAllPosts(&velogApi, isRefresh)
+	posts := v.getAllPosts(&velogApi, username, isRefresh)
 	fileNameList := workerManager.Aggregate(cancel, posts,
 		func(postItem velog.VelogPostsItem) string {
-			post, err := velogApi.Post(postItem.UrlSlug)
+			post, err := velogApi.Post(username, postItem.UrlSlug)
 			if err != nil {
 				logger.Errorf("failed to get post %s, err: %s", post.Title, err.Error())
 				return ""
@@ -172,7 +172,7 @@ func (v *VelogService) FetchAllVelogPostsZip(username string, isRefresh bool) (c
 	return closeFunc, zipFilename, nil
 }
 
-func (v *VelogService) getAllPosts(velogApi *velog.VelogAPI, isRefresh bool) velog.VelogPostsItemList {
+func (v *VelogService) getAllPosts(velogApi *velog.VelogAPI, username string, isRefresh bool) velog.VelogPostsItemList {
 	logger := log.GetLogger()
 	cursor := ""
 
@@ -180,11 +180,11 @@ func (v *VelogService) getAllPosts(velogApi *velog.VelogAPI, isRefresh bool) vel
 		Timeout(time.Second*2).
 		TTL(time.Minute*10).
 		Refresh(isRefresh).
-		Build(fmt.Sprintf("%s-%s", velogApi.Username, "post-all")),
+		Build(fmt.Sprintf("%s-%s", username, "post-all")),
 		func() (string, error) {
 			velogPosts := velog.VelogPostsItemList{}
 			for {
-				posts, err := velogApi.Posts(cursor, 50)
+				posts, err := velogApi.Posts(username, cursor, 50)
 				velogPosts = append(velogPosts, posts...)
 				if err != nil {
 					logger.Errorf("failed to get posts: %s", err)
@@ -214,7 +214,7 @@ func (v *VelogService) getAllPosts(velogApi *velog.VelogAPI, isRefresh bool) vel
 
 func (v *VelogService) FetchSelectedVelogPostsZip(username string, urlSlugList []string) (closeFunc, string, error) {
 	// logger := log.GetLogger()
-	velogApi := velog.NewVelogAPI(config.Manager.VelogConfig.ApiUrl, username)
+	velogApi := velog.NewVelogAPI(config.Manager.VelogConfig.ApiUrl)
 	fh := file.NewFileHandler()
 
 	closeFunc := func() {
@@ -223,7 +223,7 @@ func (v *VelogService) FetchSelectedVelogPostsZip(username string, urlSlugList [
 
 	fileList := []*os.File{}
 	for _, urlSlug := range urlSlugList {
-		post, err := velogApi.Post(urlSlug)
+		post, err := velogApi.Post(username, urlSlug)
 
 		// post에 데이터가 없는 경우 체크
 		// 실패해도 계속 다운로드 해야하는 지

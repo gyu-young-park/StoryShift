@@ -9,18 +9,16 @@ import (
 
 type VelogAPI struct {
 	VelogAPIURL string
-	Username    string
 }
 
-func NewVelogAPI(apiUrl string, username string) VelogAPI {
+func NewVelogAPI(apiUrl string) VelogAPI {
 	return VelogAPI{
 		VelogAPIURL: apiUrl,
-		Username:    username,
 	}
 }
 
-func (v VelogAPI) Posts(cursor string, limit int) (VelogPostsItemList, error) {
-	reqBody := graphQLQuery.posts(v.Username, cursor, limit)
+func (v VelogAPI) Posts(username, cursor string, limit int) (VelogPostsItemList, error) {
+	reqBody := graphQLQuery.posts(username, cursor, limit)
 
 	resp, err := httpclient.Post(httpclient.PostRequestParam{
 		URL:         v.VelogAPIURL,
@@ -43,8 +41,8 @@ func (v VelogAPI) Posts(cursor string, limit int) (VelogPostsItemList, error) {
 	return posts, err
 }
 
-func (v VelogAPI) Post(urlSlug string) (VelogPost, error) {
-	reqBody := graphQLQuery.readPost(v.Username, urlSlug)
+func (v VelogAPI) Post(username, urlSlug string) (VelogPost, error) {
+	reqBody := graphQLQuery.readPost(username, urlSlug)
 
 	resp, err := httpclient.Post(httpclient.PostRequestParam{
 		URL:         v.VelogAPIURL,
@@ -71,8 +69,8 @@ func (v VelogAPI) Post(urlSlug string) (VelogPost, error) {
 	return post, nil
 }
 
-func (v VelogAPI) Series() (VelogSeriesItemList, error) {
-	reqBody := graphQLQuery.userSeriesList(v.Username)
+func (v VelogAPI) Series(username string) (VelogSeriesItemList, error) {
+	reqBody := graphQLQuery.userSeriesList(username)
 	resp, err := httpclient.Post(httpclient.PostRequestParam{
 		URL:         v.VelogAPIURL,
 		Body:        bytes.NewBuffer([]byte(reqBody)),
@@ -94,8 +92,8 @@ func (v VelogAPI) Series() (VelogSeriesItemList, error) {
 	return seriesList, err
 }
 
-func (v VelogAPI) ReadSeries(urlSlug string) (VelogReadSeries, error) {
-	reqBody := graphQLQuery.readSeries(v.Username, urlSlug)
+func (v VelogAPI) ReadSeries(username, urlSlug string) (VelogReadSeries, error) {
+	reqBody := graphQLQuery.readSeries(username, urlSlug)
 	resp, err := httpclient.Post(httpclient.PostRequestParam{
 		URL:         v.VelogAPIURL,
 		Body:        bytes.NewBuffer([]byte(reqBody)),
@@ -117,8 +115,8 @@ func (v VelogAPI) ReadSeries(urlSlug string) (VelogReadSeries, error) {
 	return readSeries, err
 }
 
-func (v VelogAPI) UserProfile() (VelogUserProfile, error) {
-	reqBody := graphQLQuery.userProfile(v.Username)
+func (v VelogAPI) UserProfile(username string) (VelogUserProfile, error) {
+	reqBody := graphQLQuery.userProfile(username)
 	resp, err := httpclient.Post(httpclient.PostRequestParam{
 		URL:         v.VelogAPIURL,
 		Body:        bytes.NewBuffer([]byte(reqBody)),

@@ -7,8 +7,8 @@ import (
 )
 
 func TestReadSeriesAPIWhenSuccess(t *testing.T) {
-	velogApi := NewVelogAPI("https://v2.velog.io/graphql", "chappi")
-	readSeries, err := velogApi.ReadSeries("CKA")
+	velogApi := NewVelogAPI("https://v2.velog.io/graphql")
+	readSeries, err := velogApi.ReadSeries("CKA", "chappi")
 
 	assert.NoError(t, err, "error occured")
 	t.Log(readSeries)
