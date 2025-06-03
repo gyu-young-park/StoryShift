@@ -10,3 +10,8 @@ func sanitizeBasePathSpecialCase(filename string) (string, bool) {
 	sanitize := re.ReplaceAllString(filename, "-")
 	return sanitize, matched
 }
+
+func markdownPictureMatcher(contents string) []string {
+	// regexp.Compile("[]")
+	return []string{}
+}
