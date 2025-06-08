@@ -13,10 +13,19 @@ import (
 )
 
 const (
-	TEMP_DIR = "./temp"
+	TEMP_DIR = "/tmp/StoryShift"
 )
 
 func NewFileHandler() *FileHandler {
+	if _, err := os.Stat(TEMP_DIR); os.IsNotExist(err) {
+		err := os.MkdirAll(TEMP_DIR, 0755)
+		if err != nil {
+			panic(fmt.Sprintf("failed to create %s directory: %v", TEMP_DIR, err))
+		}
+	}
+
+	fmt.Println("tempDir" + TEMP_DIR)
+
 	dir, err := os.MkdirTemp(TEMP_DIR, "filehandler-*")
 	if err != nil {
 		panic(err)
