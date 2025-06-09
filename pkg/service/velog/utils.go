@@ -1,6 +1,7 @@
 package servicevelog
 
 import (
+	"fmt"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -27,6 +28,20 @@ func markdownImageMatcher(contents string) []string {
 	}
 
 	return images
+}
+
+func replaceAllMarkdownImageUrl(imageNamePrefix string, contents string) string {
+	re := regexp.MustCompile(`!\[[^\]]*\]\(([^)]+)\)`)
+	i := 0
+
+	return re.ReplaceAllStringFunc(contents, func(match string) string {
+		imageName := fmt.Sprintf("%v-%v", imageNamePrefix, i)
+		i++
+		submatch := re.FindStringSubmatch(match)
+		urlIndex := len(submatch) - 1
+		alt := match[:len(match)-len(submatch[urlIndex])-1]
+		return alt + imageName + ")"
+	})
 }
 
 func downloadImageWithUrl(fh *file.FileHandler, imageUrls map[string]string) []string {
