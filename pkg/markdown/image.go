@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"path/filepath"
 	"regexp"
-	"strings"
 
 	"github.com/gyu-young-park/StoryShift/internal/httpclient"
 	"github.com/gyu-young-park/StoryShift/pkg/file"
@@ -37,48 +36,43 @@ func (m *MKImageHander) GetImageList(contents string) []string {
 }
 
 func (m *MKImageHander) ReplaceAllImageUrlOfContensWithPrefix(imageNamePrefix string, contents string) string {
+	logger := log.GetLogger()
 	index := 0
 	return m.matcher.ReplaceAllStringFunc(contents, func(match string) string {
 		imageName := fmt.Sprintf("%v-%v", imageNamePrefix, index)
 		index++
+
 		submatch := m.matcher.FindStringSubmatch(match)
 		urlIndex := len(submatch) - 1
+		logger.Debugf("change image url from [%s] to [%s]", submatch[urlIndex-1], imageName)
 		alt := match[:len(match)-len(submatch[urlIndex])-1]
-		return alt + imageName + ")"
+		return alt + imageName + filepath.Ext(match) + ")"
 	})
 }
 
-func (m *MKImageHander) DownloadImageWithUrl(fh *file.FileHandler, imageUrls []string) []string {
+func (m *MKImageHander) DownloadImageWithUrl(fh *file.FileHandler, imageUrls map[string]string) ([]string, error) {
 	logger := log.GetLogger()
 
 	if imageUrls == nil {
 		logger.Error("there is no imageUrls map")
-		return []string{}
+		return []string{}, fmt.Errorf("there is no imageUrls map")
 	}
 
-	imageFileList := []string{}
-	for _, imageUrl := range imageUrls {
+	files := []file.File{}
+	for replaceName, imageUrl := range imageUrls {
 		resp, err := httpclient.Get(httpclient.GetRequestParam{
 			URL: imageUrl,
 		})
 
 		if err != nil {
 			logger.Errorf("failed to download image: %s", imageUrl)
-			continue
+			return []string{}, fmt.Errorf("failed to download image: %s, error: %v", imageUrl, err)
 		}
 
-		imageNameAndExt := strings.Split(filepath.Base(imageUrl), ".")
-		if len(imageNameAndExt) < 2 {
-			logger.Errorf("invalid image url: %s", imageUrl)
-			continue
-		}
-
-		imageName := imageNameAndExt[0]
-		ext := imageNameAndExt[1]
-
-		imageFilePath, err := fh.CreateFile(file.File{
+		filename, ext := file.SplitFilenameWithNameAndExt(replaceName)
+		files = append(files, file.File{
 			FileMeta: file.FileMeta{
-				Name:      imageName,
+				Name:      filename,
 				Extention: ext,
 			},
 			Content: string(resp.Body),
@@ -88,8 +82,18 @@ func (m *MKImageHander) DownloadImageWithUrl(fh *file.FileHandler, imageUrls []s
 			logger.Errorf("failed to create image file: %s", imageUrl)
 			continue
 		}
-		imageFileList = append(imageFileList, imageFilePath)
 	}
 
-	return imageFileList
+	imageFileList := []string{}
+	for _, file := range files {
+		imageFilePath, err := fh.CreateFile(file)
+		if err != nil {
+			logger.Errorf("failed to create image file: %s", file.GetFilename())
+			return []string{}, fmt.Errorf("failed to create image file: %s", file.GetFilename())
+		}
+		imageFileList = append(imageFileList, imageFilePath)
+		logger.Infof("image file created: %s", imageFilePath)
+	}
+
+	return imageFileList, nil
 }

@@ -25,7 +25,7 @@ func TestReplaceAllMarkdownImageUrl(t *testing.T) {
 	imageHandler := NewMKImageHander()
 	replacedMarkdownContent := imageHandler.ReplaceAllImageUrlOfContensWithPrefix("image-prefix", MARKDONW_CONTENT_WITH_IMAGE)
 	pictures := imageHandler.GetImageList(replacedMarkdownContent)
-	assert.Equal(t, "image-prefix-0", pictures[0])
+	assert.Equal(t, "image-prefix-0.png", pictures[0])
 }
 
 func TestDownloadImageWithUrl(t *testing.T) {
@@ -34,7 +34,36 @@ func TestDownloadImageWithUrl(t *testing.T) {
 	fh := file.NewFileHandler()
 	defer fh.Close()
 
-	imageFilePathList := imageHandler.DownloadImageWithUrl(fh, images)
+	mapper := map[string]string{
+		"ebpf.png": images[0],
+	}
+
+	imageFilePathList, err := imageHandler.DownloadImageWithUrl(fh, mapper)
+	assert.Equal(t, err, nil)
 	assert.Equal(t, 1, len(imageFilePathList))
 	assert.Equal(t, "ebpf.png", filepath.Base(imageFilePathList[0]))
+}
+
+func TestMarkdownImageProcessBestScenario(t *testing.T) {
+	imageHandler := NewMKImageHander()
+	imageList := imageHandler.GetImageList(MARKDONW_CONTENT_WITH_IMAGE)
+
+	prefix := "ebpf-post"
+	replacedContents := imageHandler.ReplaceAllImageUrlOfContensWithPrefix(prefix, MARKDONW_CONTENT_WITH_IMAGE)
+	replacedImageList := imageHandler.GetImageList(replacedContents)
+	assert.Equal(t, 1, len(replacedImageList))
+
+	replaceMapWithNameAndOrigin := map[string]string{}
+
+	for i := 0; i < len(replacedImageList); i++ {
+		replaceMapWithNameAndOrigin[replacedImageList[i]] = imageList[i]
+	}
+
+	fh := file.NewFileHandler()
+	defer fh.Close()
+
+	replacedImageFileList, err := imageHandler.DownloadImageWithUrl(fh, replaceMapWithNameAndOrigin)
+	assert.Equal(t, err, nil)
+	assert.Equal(t, 1, len(replacedImageFileList))
+	assert.Equal(t, "ebpf-post-0.png", filepath.Base(replacedImageFileList[0]))
 }
