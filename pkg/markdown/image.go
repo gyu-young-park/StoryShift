@@ -14,17 +14,17 @@ const (
 	IMAGE_REGEX_MATCHER = `!\[[^\]]*\]\(([^)]+)\)`
 )
 
-type MKImageHander struct {
+type MKImageHandler struct {
 	matcher *regexp.Regexp
 }
 
-func NewMKImageHander() *MKImageHander {
-	return &MKImageHander{
+func NewMKImageHandler() *MKImageHandler {
+	return &MKImageHandler{
 		matcher: regexp.MustCompile(IMAGE_REGEX_MATCHER),
 	}
 }
 
-func (m *MKImageHander) GetImageList(contents string) []string {
+func (m *MKImageHandler) GetImageList(contents string) []string {
 	matches := m.matcher.FindAllStringSubmatch(contents, -1)
 
 	images := []string{}
@@ -35,7 +35,7 @@ func (m *MKImageHander) GetImageList(contents string) []string {
 	return images
 }
 
-func (m *MKImageHander) ReplaceAllImageUrlOfContensWithPrefix(imageNamePrefix string, contents string) string {
+func (m *MKImageHandler) ReplaceAllImageUrlOfContensWithPrefix(imageNamePrefix string, contents string) string {
 	logger := log.GetLogger()
 	index := 0
 	return m.matcher.ReplaceAllStringFunc(contents, func(match string) string {
@@ -50,7 +50,7 @@ func (m *MKImageHander) ReplaceAllImageUrlOfContensWithPrefix(imageNamePrefix st
 	})
 }
 
-func (m *MKImageHander) DownloadImageWithUrl(fh *file.FileHandler, imageUrls map[string]string) ([]string, error) {
+func (m *MKImageHandler) DownloadImageWithUrl(fh *file.FileHandler, imageUrls map[string]string) ([]string, error) {
 	logger := log.GetLogger()
 
 	if imageUrls == nil {
@@ -96,4 +96,8 @@ func (m *MKImageHander) DownloadImageWithUrl(fh *file.FileHandler, imageUrls map
 	}
 
 	return imageFileList, nil
+}
+
+func (m *MKImageHandler) DownloadImageAndGetReplaceImageContent() {
+
 }
