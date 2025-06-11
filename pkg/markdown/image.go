@@ -46,7 +46,7 @@ func (m *MKImageHandler) ReplaceAllImageUrlOfContensWithPrefix(imageNamePrefix s
 		urlIndex := len(submatch) - 1
 		logger.Debugf("change image url from [%s] to [%s]", submatch[urlIndex-1], imageName)
 		alt := match[:len(match)-len(submatch[urlIndex])-1]
-		return alt + imageName + filepath.Ext(match) + ")"
+		return alt + imageName + filepath.Ext(match)
 	})
 }
 
@@ -69,10 +69,10 @@ func (m *MKImageHandler) DownloadImageWithUrl(fh *file.FileHandler, imageUrls ma
 			return []string{}, fmt.Errorf("failed to download image: %s, error: %v", imageUrl, err)
 		}
 
-		filename, ext := file.SplitFilenameWithNameAndExt(replaceName)
+		_, ext := file.SplitFilenameWithNameAndExt(imageUrl)
 		files = append(files, file.File{
 			FileMeta: file.FileMeta{
-				Name:      filename,
+				Name:      replaceName,
 				Extention: ext,
 			},
 			Content: string(resp.Body),
@@ -96,8 +96,4 @@ func (m *MKImageHandler) DownloadImageWithUrl(fh *file.FileHandler, imageUrls ma
 	}
 
 	return imageFileList, nil
-}
-
-func (m *MKImageHandler) DownloadImageAndGetReplaceImageContent() {
-
 }
