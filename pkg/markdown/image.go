@@ -1,9 +1,12 @@
 package markdown
 
 import (
+	"encoding/base64"
 	"fmt"
+	"os"
 	"path/filepath"
 	"regexp"
+	"sync"
 
 	"github.com/gyu-young-park/StoryShift/internal/httpclient"
 	"github.com/gyu-young-park/StoryShift/pkg/file"
@@ -12,19 +15,98 @@ import (
 
 const (
 	IMAGE_REGEX_MATCHER = `!\[[^\]]*\]\(([^)]+)\)`
+	IMAGE_DIR_KEY       = "IMAGE_DIRECTORY_PATH_KEY"
 )
 
-type MKImageHandler struct {
+type MarkdownImageHandlable interface {
+	GetImageList(contents string) []string
+	ReplaceAllImageUrlOfContensWithPrefix(imageNamePrefix string, contents string) string
+	DownloadImageWithUrl(fh *file.FileHandler, imageUrls map[string]string) ([]string, error)
+}
+
+type MarkdownImageManipulator struct {
+	lock               *sync.RWMutex
+	handler            MarkdownImageHandlable
+	imageNameAndURLMap map[string]string
+	fileHandler        *file.FileHandler
+}
+
+func NewMarkdownImageManipulator(handler MarkdownImageHandlable) *MarkdownImageManipulator {
+	return &MarkdownImageManipulator{
+		lock:               &sync.RWMutex{},
+		handler:            handler,
+		imageNameAndURLMap: make(map[string]string),
+		fileHandler:        file.NewFileHandler(),
+	}
+}
+
+func (m *MarkdownImageManipulator) Replace(title string, contents string) string {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+	imageTagList := m.handler.GetImageList(contents)
+	if len(imageTagList) == 0 {
+		return contents
+	}
+
+	encodedTitle := base64.RawURLEncoding.EncodeToString([]byte(title))
+	for i, image := range imageTagList {
+		m.imageNameAndURLMap[fmt.Sprintf("%s-%v", encodedTitle, i)] = image
+	}
+
+	return m.handler.ReplaceAllImageUrlOfContensWithPrefix(fmt.Sprintf("%s/%s", IMAGE_DIR_KEY, encodedTitle), contents)
+}
+
+func (m *MarkdownImageManipulator) DownloadAsZip(username string) (*os.File, error) {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+
+	imageFileList := []*os.File{}
+	imageFilePath, err := m.handler.DownloadImageWithUrl(m.fileHandler, m.imageNameAndURLMap)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, image := range imageFilePath {
+		if image != "" {
+			imageFileList = append(imageFileList, m.fileHandler.GetFileWithLocked(image))
+		}
+	}
+
+	imageZipname, err := m.fileHandler.CreateZipFile(file.ZipFile{
+		FileMeta: file.FileMeta{
+			Name:      fmt.Sprintf("%s-%s", username, "image"),
+			Extention: "zip",
+		},
+		Files: imageFileList,
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	imageZipfile := m.fileHandler.GetFileWithLocked(imageZipname)
+	imageZipfile.Seek(0, 0)
+
+	return imageZipfile, nil
+}
+
+func (m *MarkdownImageManipulator) Done() {
+	m.imageNameAndURLMap = map[string]string{}
+	m.fileHandler.Close()
+	m.fileHandler = nil
+}
+
+type MarkdownImageHandler struct {
 	matcher *regexp.Regexp
 }
 
-func NewMKImageHandler() *MKImageHandler {
-	return &MKImageHandler{
+func NewMarkdownImageHandler() *MarkdownImageHandler {
+	return &MarkdownImageHandler{
 		matcher: regexp.MustCompile(IMAGE_REGEX_MATCHER),
 	}
 }
 
-func (m *MKImageHandler) GetImageList(contents string) []string {
+func (m *MarkdownImageHandler) GetImageList(contents string) []string {
 	matches := m.matcher.FindAllStringSubmatch(contents, -1)
 
 	images := []string{}
@@ -35,7 +117,7 @@ func (m *MKImageHandler) GetImageList(contents string) []string {
 	return images
 }
 
-func (m *MKImageHandler) ReplaceAllImageUrlOfContensWithPrefix(imageNamePrefix string, contents string) string {
+func (m *MarkdownImageHandler) ReplaceAllImageUrlOfContensWithPrefix(imageNamePrefix string, contents string) string {
 	logger := log.GetLogger()
 	index := 0
 	return m.matcher.ReplaceAllStringFunc(contents, func(match string) string {
@@ -50,11 +132,9 @@ func (m *MKImageHandler) ReplaceAllImageUrlOfContensWithPrefix(imageNamePrefix s
 	})
 }
 
-func (m *MKImageHandler) DownloadImageWithUrl(fh *file.FileHandler, imageUrls map[string]string) ([]string, error) {
+func (m *MarkdownImageHandler) DownloadImageWithUrl(fh *file.FileHandler, imageUrls map[string]string) ([]string, error) {
 	logger := log.GetLogger()
-
 	if imageUrls == nil {
-		logger.Error("there is no imageUrls map")
 		return []string{}, fmt.Errorf("there is no imageUrls map")
 	}
 
@@ -65,7 +145,6 @@ func (m *MKImageHandler) DownloadImageWithUrl(fh *file.FileHandler, imageUrls ma
 		})
 
 		if err != nil {
-			logger.Errorf("failed to download image: %s", imageUrl)
 			return []string{}, fmt.Errorf("failed to download image: %s, error: %v", imageUrl, err)
 		}
 
@@ -77,18 +156,12 @@ func (m *MKImageHandler) DownloadImageWithUrl(fh *file.FileHandler, imageUrls ma
 			},
 			Content: string(resp.Body),
 		})
-
-		if err != nil {
-			logger.Errorf("failed to create image file: %s", imageUrl)
-			continue
-		}
 	}
 
 	imageFileList := []string{}
 	for _, file := range files {
 		imageFilePath, err := fh.CreateFile(file)
 		if err != nil {
-			logger.Errorf("failed to create image file: %s", file.GetFilename())
 			return []string{}, fmt.Errorf("failed to create image file: %s", file.GetFilename())
 		}
 		imageFileList = append(imageFileList, imageFilePath)
@@ -96,4 +169,23 @@ func (m *MKImageHandler) DownloadImageWithUrl(fh *file.FileHandler, imageUrls ma
 	}
 
 	return imageFileList, nil
+}
+
+type DefaultMarkdownImageHandler struct {
+}
+
+func NewDefaultMarkdownImageHandler() *DefaultMarkdownImageHandler {
+	return &DefaultMarkdownImageHandler{}
+}
+
+func (m *DefaultMarkdownImageHandler) GetImageList(contents string) []string {
+	return []string{}
+}
+
+func (m *DefaultMarkdownImageHandler) ReplaceAllImageUrlOfContensWithPrefix(imageNamePrefix string, contents string) string {
+	return ""
+}
+
+func (m *DefaultMarkdownImageHandler) DownloadImageWithUrl(fh *file.FileHandler, imageUrls map[string]string) ([]string, error) {
+	return []string{}, nil
 }

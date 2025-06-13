@@ -16,20 +16,20 @@ eBPF program은 eBPF bytecode 명령어 셋으로 assembly로 programming할 수
 )
 
 func TestMarkdownImageeMatcher(t *testing.T) {
-	imageHandler := NewMKImageHandler()
+	imageHandler := NewMarkdownImageHandler()
 	pictures := imageHandler.GetImageList(MARKDONW_CONTENT_WITH_IMAGE)
 	assert.Equal(t, "https://velog.velcdn.com/images/chappi/post/42f30731-7b86-4713-a429-3acc63d288a1/image.png", pictures[0])
 }
 
 func TestReplaceAllMarkdownImageUrl(t *testing.T) {
-	imageHandler := NewMKImageHandler()
+	imageHandler := NewMarkdownImageHandler()
 	replacedMarkdownContent := imageHandler.ReplaceAllImageUrlOfContensWithPrefix("image-prefix", MARKDONW_CONTENT_WITH_IMAGE)
 	pictures := imageHandler.GetImageList(replacedMarkdownContent)
 	assert.Equal(t, "image-prefix-0.png", pictures[0])
 }
 
 func TestDownloadImageWithUrl(t *testing.T) {
-	imageHandler := NewMKImageHandler()
+	imageHandler := NewMarkdownImageHandler()
 	images := imageHandler.GetImageList(MARKDONW_CONTENT_WITH_IMAGE)
 	fh := file.NewFileHandler()
 	defer fh.Close()
@@ -45,7 +45,7 @@ func TestDownloadImageWithUrl(t *testing.T) {
 }
 
 func TestMarkdownImageProcessBestScenario(t *testing.T) {
-	imageHandler := NewMKImageHandler()
+	imageHandler := NewMarkdownImageHandler()
 	imageList := imageHandler.GetImageList(MARKDONW_CONTENT_WITH_IMAGE)
 	replaceMapWithNameAndOrigin := map[string]string{
 		"ebpf-replace": imageList[0],

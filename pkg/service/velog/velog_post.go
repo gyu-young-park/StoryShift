@@ -10,6 +10,7 @@ import (
 	"github.com/gyu-young-park/StoryShift/internal/cache"
 	"github.com/gyu-young-park/StoryShift/pkg/file"
 	"github.com/gyu-young-park/StoryShift/pkg/log"
+	"github.com/gyu-young-park/StoryShift/pkg/markdown"
 	"github.com/gyu-young-park/StoryShift/pkg/velog"
 	"github.com/gyu-young-park/StoryShift/pkg/worker"
 )
@@ -88,11 +89,11 @@ type RenamedFileJSON struct {
 func (v *VelogService) FetchAllVelogPostsZip(username string, isRefresh bool, downloadImageFlag bool) (closeFunc, string, error) {
 	logger := log.GetLogger()
 	fileHandler := file.NewFileHandler()
-	imageFileHandler := file.NewFileHandler()
+	imageManipulator := markdown.NewMarkdownImageManipulator(markdown.NewMarkdownImageHandler())
 
 	closeFunc := func() {
+		defer imageManipulator.Done()
 		defer fileHandler.Close()
-		defer imageFileHandler.Close()
 	}
 
 	fileList := []*os.File{}
@@ -116,7 +117,6 @@ func (v *VelogService) FetchAllVelogPostsZip(username string, isRefresh bool, do
 	defer workerManager.Close()
 
 	posts := v.getAllPosts(username, isRefresh)
-	allImagePathList := []string{}
 	fileNameList := workerManager.Aggregate(cancel, posts,
 		func(postItem velog.VelogPostsItem) string {
 			post, err := v.velogAPI.Post(username, postItem.UrlSlug)
@@ -134,21 +134,9 @@ func (v *VelogService) FetchAllVelogPostsZip(username string, isRefresh bool, do
 				}
 			}
 
-			imageList := v.mkImageHandler.GetImageList(post.Body)
-			replacedImageMap := map[string]string{}
-			for i, image := range imageList {
-				replacedImageMap[fmt.Sprintf("%v-%v", sanitizedFile, i)] = image
-			}
-
 			content := post.Body
 			if downloadImageFlag {
-				imageFilePath, err := v.mkImageHandler.DownloadImageWithUrl(imageFileHandler, replacedImageMap)
-				if err == nil {
-					allImagePathList = append(allImagePathList, imageFilePath...)
-					content = v.mkImageHandler.ReplaceAllImageUrlOfContensWithPrefix(fmt.Sprintf("%s/%s", "IMAGE_DIRECTORY_PATH_KEY", sanitizedFile), post.Body)
-				} else {
-					logger.Error(err.Error())
-				}
+				content = imageManipulator.Replace(sanitizedFile, post.Body)
 			}
 
 			f, err := fileHandler.CreateFile(file.File{
@@ -166,29 +154,12 @@ func (v *VelogService) FetchAllVelogPostsZip(username string, isRefresh bool, do
 		})
 
 	if downloadImageFlag {
-		imageFileList := []*os.File{}
-		for _, image := range allImagePathList {
-			if image != "" {
-				imageFileList = append(imageFileList, imageFileHandler.GetFileWithLocked(image))
-			}
-		}
-
-		imageZipname, err := imageFileHandler.CreateZipFile(file.ZipFile{
-			FileMeta: file.FileMeta{
-				Name:      fmt.Sprintf("%s-%s", username, "image"),
-				Extention: "zip",
-			},
-			Files: imageFileList,
-		})
-
+		imageZipFile, err := imageManipulator.DownloadAsZip(username)
 		if err != nil {
 			return closeFunc, "", err
+		} else {
+			fileList = append(fileList, imageZipFile)
 		}
-
-		imageZipfile := imageFileHandler.GetFileWithLocked(imageZipname)
-		imageZipfile.Seek(0, 0)
-
-		fileList = append(fileList, imageZipfile)
 	}
 
 	for _, filename := range fileNameList {
