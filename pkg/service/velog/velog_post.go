@@ -85,7 +85,7 @@ type RenamedFileJSON struct {
 	Rename string `json:"rename"`
 }
 
-func (v *VelogService) FetchAllVelogPostsZip(username string, isRefresh bool) (closeFunc, string, error) {
+func (v *VelogService) FetchAllVelogPostsZip(username string, isRefresh bool, downloadImageFlag bool) (closeFunc, string, error) {
 	logger := log.GetLogger()
 	fileHandler := file.NewFileHandler()
 	imageFileHandler := file.NewFileHandler()
@@ -141,12 +141,14 @@ func (v *VelogService) FetchAllVelogPostsZip(username string, isRefresh bool) (c
 			}
 
 			content := post.Body
-			imageFilePath, err := v.mkImageHandler.DownloadImageWithUrl(imageFileHandler, replacedImageMap)
-			if err == nil {
-				allImagePathList = append(allImagePathList, imageFilePath...)
-				content = v.mkImageHandler.ReplaceAllImageUrlOfContensWithPrefix(fmt.Sprintf("%s/%s", "IMAGE_DIRECTORY_PATH_KEY", sanitizedFile), post.Body)
-			} else {
-				logger.Error(err.Error())
+			if downloadImageFlag {
+				imageFilePath, err := v.mkImageHandler.DownloadImageWithUrl(imageFileHandler, replacedImageMap)
+				if err == nil {
+					allImagePathList = append(allImagePathList, imageFilePath...)
+					content = v.mkImageHandler.ReplaceAllImageUrlOfContensWithPrefix(fmt.Sprintf("%s/%s", "IMAGE_DIRECTORY_PATH_KEY", sanitizedFile), post.Body)
+				} else {
+					logger.Error(err.Error())
+				}
 			}
 
 			f, err := fileHandler.CreateFile(file.File{
@@ -163,28 +165,32 @@ func (v *VelogService) FetchAllVelogPostsZip(username string, isRefresh bool) (c
 			return f
 		})
 
-	imageFileList := []*os.File{}
-	for _, image := range allImagePathList {
-		if image != "" {
-			imageFileList = append(imageFileList, imageFileHandler.GetFileWithLocked(image))
+	if downloadImageFlag {
+		imageFileList := []*os.File{}
+		for _, image := range allImagePathList {
+			if image != "" {
+				imageFileList = append(imageFileList, imageFileHandler.GetFileWithLocked(image))
+			}
 		}
+
+		imageZipname, err := imageFileHandler.CreateZipFile(file.ZipFile{
+			FileMeta: file.FileMeta{
+				Name:      fmt.Sprintf("%s-%s", username, "image"),
+				Extention: "zip",
+			},
+			Files: imageFileList,
+		})
+
+		if err != nil {
+			return closeFunc, "", err
+		}
+
+		imageZipfile := imageFileHandler.GetFileWithLocked(imageZipname)
+		imageZipfile.Seek(0, 0)
+
+		fileList = append(fileList, imageZipfile)
 	}
 
-	imageZipname, err := imageFileHandler.CreateZipFile(file.ZipFile{
-		FileMeta: file.FileMeta{
-			Name:      fmt.Sprintf("%s-%s", username, "image"),
-			Extention: "zip",
-		},
-		Files: imageFileList,
-	})
-
-	if err != nil {
-		return closeFunc, "", err
-	}
-	imageZipfile := imageFileHandler.GetFileWithLocked(imageZipname)
-	imageZipfile.Seek(0, 0)
-
-	fileList = append(fileList, imageZipfile)
 	for _, filename := range fileNameList {
 		if filename != "" {
 			fileList = append(fileList, fileHandler.GetFileWithLocked(filename))

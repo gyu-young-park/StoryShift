@@ -17,3 +17,8 @@ type VelogReadSeriesRequestModel struct {
 type VelogDownloadSelectedSeriesRequestModel struct {
 	URLSlug string `from:"series_url_slug_list" json:"series_url_slug_list"`
 }
+
+type VelogDownloadAllPostRequestModel struct {
+	Refresh bool `form:"refresh" json:"refresh"`
+	Image   bool `form:"image" json:"image"`
+}

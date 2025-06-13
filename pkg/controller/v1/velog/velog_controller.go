@@ -132,13 +132,13 @@ func (v *VelogController) downloadAllPosts(c *gin.Context) {
 	logger := log.GetLogger()
 	user := c.Param("user")
 
-	refresh := c.Query("refresh")
-	isRefresh, err := strconv.ParseBool(refresh)
-	if err != nil {
-		isRefresh = false
+	var req VelogDownloadAllPostRequestModel
+	if err := c.ShouldBindQuery(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
 	}
 
-	closeFunc, zipFilename, err := v.service.FetchAllVelogPostsZip(user, isRefresh)
+	closeFunc, zipFilename, err := v.service.FetchAllVelogPostsZip(user, req.Refresh, req.Image)
 	defer closeFunc()
 	if err != nil {
 		logger.Errorf("server error occureed: %s", err)
