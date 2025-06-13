@@ -114,9 +114,10 @@ post.zip
 
 - request
 ```sh
-http://localhost:9596/v1/velog/chappi/posts/download?refresh=false
+http://localhost:9596/v1/velog/chappi/posts/download?refresh=false&image=true
 
 1. refresh: `true` or `false`, it means that server have to get all the posts from cache or velog server
+2. image: 'true' or 'false', it means that server have to download the images of all post 
 ```
 
 - response
