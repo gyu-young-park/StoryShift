@@ -21,11 +21,11 @@ const (
 type MarkdownImageHandlable interface {
 	GetImageList(contents string) []string
 	ReplaceAllImageUrlOfContensWithPrefix(imageNamePrefix string, contents string) string
-	DownloadImageWithUrl(fh *file.FileHandler, imageUrls map[string]string) ([]string, error)
+	DownloadImageWithUrl(fh *file.FileHandler, imageUrls map[string]string) ([]string, []string, error)
 }
 
 type MarkdownImageManipulator struct {
-	lock               *sync.RWMutex
+	lock               *sync.Mutex
 	handler            MarkdownImageHandlable
 	imageNameAndURLMap map[string]string
 	fileHandler        *file.FileHandler
@@ -33,7 +33,7 @@ type MarkdownImageManipulator struct {
 
 func NewMarkdownImageManipulator(handler MarkdownImageHandlable) *MarkdownImageManipulator {
 	return &MarkdownImageManipulator{
-		lock:               &sync.RWMutex{},
+		lock:               &sync.Mutex{},
 		handler:            handler,
 		imageNameAndURLMap: make(map[string]string),
 		fileHandler:        file.NewFileHandler(),
@@ -59,12 +59,17 @@ func (m *MarkdownImageManipulator) Replace(title string, contents string) string
 func (m *MarkdownImageManipulator) DownloadAsZip(username string) (*os.File, error) {
 	m.lock.Lock()
 	defer m.lock.Unlock()
+	logger := log.GetLogger()
 
 	imageFileList := []*os.File{}
-	imageFilePath, err := m.handler.DownloadImageWithUrl(m.fileHandler, m.imageNameAndURLMap)
+	imageFilePath, failedToDownloadTitleList, err := m.handler.DownloadImageWithUrl(m.fileHandler, m.imageNameAndURLMap)
 	if err != nil {
+		logger.Errorf("failed to download %s", err.Error())
 		return nil, err
 	}
+	fmt.Println(failedToDownloadTitleList)
+
+	fmt.Println()
 
 	for _, image := range imageFilePath {
 		if image != "" {
@@ -97,7 +102,8 @@ func (m *MarkdownImageManipulator) Done() {
 }
 
 type MarkdownImageHandler struct {
-	matcher *regexp.Regexp
+	matcher                   *regexp.Regexp
+	failedToDownloadTitleList []string
 }
 
 func NewMarkdownImageHandler() *MarkdownImageHandler {
@@ -132,10 +138,10 @@ func (m *MarkdownImageHandler) ReplaceAllImageUrlOfContensWithPrefix(imageNamePr
 	})
 }
 
-func (m *MarkdownImageHandler) DownloadImageWithUrl(fh *file.FileHandler, imageUrls map[string]string) ([]string, error) {
+func (m *MarkdownImageHandler) DownloadImageWithUrl(fh *file.FileHandler, imageUrls map[string]string) ([]string, []string, error) {
 	logger := log.GetLogger()
 	if imageUrls == nil {
-		return []string{}, fmt.Errorf("there is no imageUrls map")
+		return []string{}, []string{}, fmt.Errorf("there is no imageUrls map")
 	}
 
 	files := []file.File{}
@@ -143,9 +149,8 @@ func (m *MarkdownImageHandler) DownloadImageWithUrl(fh *file.FileHandler, imageU
 		resp, err := httpclient.Get(httpclient.GetRequestParam{
 			URL: imageUrl,
 		})
-
 		if err != nil {
-			return []string{}, fmt.Errorf("failed to download image: %s, error: %v", imageUrl, err)
+			m.failedToDownloadTitleList = append(m.failedToDownloadTitleList, imageUrl)
 		}
 
 		_, ext := file.SplitFilenameWithNameAndExt(imageUrl)
@@ -162,13 +167,13 @@ func (m *MarkdownImageHandler) DownloadImageWithUrl(fh *file.FileHandler, imageU
 	for _, file := range files {
 		imageFilePath, err := fh.CreateFile(file)
 		if err != nil {
-			return []string{}, fmt.Errorf("failed to create image file: %s", file.GetFilename())
+			return []string{}, m.failedToDownloadTitleList, fmt.Errorf("failed to create image file: %s", file.GetFilename())
 		}
 		imageFileList = append(imageFileList, imageFilePath)
 		logger.Infof("image file created: %s", imageFilePath)
 	}
 
-	return imageFileList, nil
+	return imageFileList, m.failedToDownloadTitleList, nil
 }
 
 type DefaultMarkdownImageHandler struct {
