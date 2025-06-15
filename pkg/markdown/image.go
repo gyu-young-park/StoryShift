@@ -2,6 +2,7 @@ package markdown
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -62,14 +63,28 @@ func (m *MarkdownImageManipulator) DownloadAsZip(username string) (*os.File, err
 	logger := log.GetLogger()
 
 	imageFileList := []*os.File{}
-	imageFilePath, failedToDownloadTitleList, err := m.handler.DownloadImageWithUrl(m.fileHandler, m.imageNameAndURLMap)
+	imageFilePath, failedImageList, err := m.handler.DownloadImageWithUrl(m.fileHandler, m.imageNameAndURLMap)
 	if err != nil {
 		logger.Errorf("failed to download %s", err.Error())
 		return nil, err
 	}
-	fmt.Println(failedToDownloadTitleList)
 
-	fmt.Println()
+	if len(failedImageList) > 0 {
+		bFailedImageList, _ := json.Marshal(failedImageList)
+		downloadFailListFilePath, err := m.fileHandler.CreateFile(file.File{
+			FileMeta: file.FileMeta{
+				Name:      "download_fail_list",
+				Extention: "json",
+			},
+			Content: string(bFailedImageList),
+		})
+
+		if err != nil {
+			logger.Errorf("failed to create download fail list, err: %s", err.Error())
+		} else {
+			imageFileList = append(imageFileList, m.fileHandler.GetFileWithLocked(downloadFailListFilePath))
+		}
+	}
 
 	for _, image := range imageFilePath {
 		if image != "" {
@@ -102,8 +117,7 @@ func (m *MarkdownImageManipulator) Done() {
 }
 
 type MarkdownImageHandler struct {
-	matcher                   *regexp.Regexp
-	failedToDownloadTitleList []string
+	matcher *regexp.Regexp
 }
 
 func NewMarkdownImageHandler() *MarkdownImageHandler {
@@ -144,13 +158,14 @@ func (m *MarkdownImageHandler) DownloadImageWithUrl(fh *file.FileHandler, imageU
 		return []string{}, []string{}, fmt.Errorf("there is no imageUrls map")
 	}
 
+	failedImageList := []string{}
 	files := []file.File{}
 	for replaceName, imageUrl := range imageUrls {
 		resp, err := httpclient.Get(httpclient.GetRequestParam{
 			URL: imageUrl,
 		})
 		if err != nil {
-			m.failedToDownloadTitleList = append(m.failedToDownloadTitleList, imageUrl)
+			failedImageList = append(failedImageList, imageUrl)
 		}
 
 		_, ext := file.SplitFilenameWithNameAndExt(imageUrl)
@@ -167,13 +182,13 @@ func (m *MarkdownImageHandler) DownloadImageWithUrl(fh *file.FileHandler, imageU
 	for _, file := range files {
 		imageFilePath, err := fh.CreateFile(file)
 		if err != nil {
-			return []string{}, m.failedToDownloadTitleList, fmt.Errorf("failed to create image file: %s", file.GetFilename())
+			return []string{}, failedImageList, fmt.Errorf("failed to create image file: %s", file.GetFilename())
 		}
 		imageFileList = append(imageFileList, imageFilePath)
 		logger.Infof("image file created: %s", imageFilePath)
 	}
 
-	return imageFileList, m.failedToDownloadTitleList, nil
+	return imageFileList, failedImageList, nil
 }
 
 type DefaultMarkdownImageHandler struct {
