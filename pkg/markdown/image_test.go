@@ -38,11 +38,11 @@ func TestDownloadImageWithUrl(t *testing.T) {
 		"ebpf": images[0],
 	}
 
-	imageFilePathList, failedToDownloadTitleList, err := imageHandler.DownloadImageWithUrl(fh, mapper)
+	downloadImageWithUrlRespModel, err := imageHandler.DownloadImageWithUrl(fh, mapper)
 	assert.Equal(t, err, nil)
-	assert.Equal(t, 0, len(failedToDownloadTitleList))
-	assert.Equal(t, 1, len(imageFilePathList))
-	assert.Equal(t, "ebpf.png", filepath.Base(imageFilePathList[0]))
+	assert.Equal(t, 0, len(downloadImageWithUrlRespModel.FailedToDownloadImageUrlList))
+	assert.Equal(t, 1, len(downloadImageWithUrlRespModel.ImageFilePathList))
+	assert.Equal(t, "ebpf.png", filepath.Base(downloadImageWithUrlRespModel.ImageFilePathList[0]))
 }
 
 func TestMarkdownImageProcessBestScenario(t *testing.T) {
@@ -55,9 +55,9 @@ func TestMarkdownImageProcessBestScenario(t *testing.T) {
 	fh := file.NewFileHandler()
 	defer fh.Close()
 
-	replacedImageFileList, failedToDownloadTitleList, err := imageHandler.DownloadImageWithUrl(fh, replaceMapWithNameAndOrigin)
+	downloadImageWithUrlRespModel, err := imageHandler.DownloadImageWithUrl(fh, replaceMapWithNameAndOrigin)
 	assert.Equal(t, err, nil)
-	assert.Equal(t, 0, len(failedToDownloadTitleList))
-	assert.Equal(t, 1, len(replacedImageFileList))
-	assert.Equal(t, "ebpf-replace.png", filepath.Base(replacedImageFileList[0]))
+	assert.Equal(t, 0, len(downloadImageWithUrlRespModel.FailedToDownloadImageUrlList))
+	assert.Equal(t, 1, len(downloadImageWithUrlRespModel.ImageFilePathList))
+	assert.Equal(t, "ebpf-replace.png", filepath.Base(downloadImageWithUrlRespModel.ImageFilePathList[0]))
 }

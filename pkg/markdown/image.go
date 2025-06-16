@@ -54,14 +54,14 @@ func (m *MarkdownImageManipulator) DownloadAsZip(username string) (*os.File, err
 	logger := log.GetLogger()
 
 	imageFileList := []*os.File{}
-	imageFilePath, failedImageList, err := m.handler.DownloadImageWithUrl(m.fileHandler, m.imageNameAndURLMap)
+	downloadImageWithUrlRespModel, err := m.handler.DownloadImageWithUrl(m.fileHandler, m.imageNameAndURLMap)
 	if err != nil {
 		logger.Errorf("failed to download %s", err.Error())
 		return nil, err
 	}
 
-	if len(failedImageList) > 0 {
-		bFailedImageList, _ := json.Marshal(failedImageList)
+	if len(downloadImageWithUrlRespModel.FailedToDownloadImageUrlList) > 0 {
+		bFailedImageList, _ := json.Marshal(downloadImageWithUrlRespModel.FailedToDownloadImageUrlList)
 		downloadFailListFilePath, err := m.fileHandler.CreateFile(file.File{
 			FileMeta: file.FileMeta{
 				Name:      "download_fail_list",
@@ -77,7 +77,7 @@ func (m *MarkdownImageManipulator) DownloadAsZip(username string) (*os.File, err
 		}
 	}
 
-	for _, image := range imageFilePath {
+	for _, image := range downloadImageWithUrlRespModel.ImageFilePathList {
 		if image != "" {
 			imageFileList = append(imageFileList, m.fileHandler.GetFileWithLocked(image))
 		}

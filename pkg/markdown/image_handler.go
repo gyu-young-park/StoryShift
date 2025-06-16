@@ -13,7 +13,7 @@ import (
 type MarkdownImageHandlable interface {
 	GetImageList(contents string) []string
 	ReplaceAllImageUrlOfContensWithPrefix(imageNamePrefix string, contents string) string
-	DownloadImageWithUrl(fh *file.FileHandler, imageUrls map[string]string) ([]string, []string, error)
+	DownloadImageWithUrl(fh *file.FileHandler, imageUrls map[string]string) (DownloadImageWithUrlRespModel, error)
 }
 
 type MarkdownImageHandler struct {
@@ -52,10 +52,10 @@ func (m *MarkdownImageHandler) ReplaceAllImageUrlOfContensWithPrefix(imageNamePr
 	})
 }
 
-func (m *MarkdownImageHandler) DownloadImageWithUrl(fh *file.FileHandler, imageUrls map[string]string) ([]string, []string, error) {
+func (m *MarkdownImageHandler) DownloadImageWithUrl(fh *file.FileHandler, imageUrls map[string]string) (DownloadImageWithUrlRespModel, error) {
 	logger := log.GetLogger()
 	if imageUrls == nil {
-		return []string{}, []string{}, fmt.Errorf("there is no imageUrls map")
+		return DownloadImageWithUrlRespModel{}, fmt.Errorf("there is no imageUrls map")
 	}
 
 	failedImageList := []string{}
@@ -82,13 +82,13 @@ func (m *MarkdownImageHandler) DownloadImageWithUrl(fh *file.FileHandler, imageU
 	for _, file := range files {
 		imageFilePath, err := fh.CreateFile(file)
 		if err != nil {
-			return []string{}, failedImageList, fmt.Errorf("failed to create image file: %s", file.GetFilename())
+			return DownloadImageWithUrlRespModel{}, fmt.Errorf("failed to create image file: %s", file.GetFilename())
 		}
 		imageFileList = append(imageFileList, imageFilePath)
 		logger.Infof("image file created: %s", imageFilePath)
 	}
 
-	return imageFileList, failedImageList, nil
+	return DownloadImageWithUrlRespModel{ImageFilePathList: imageFileList, FailedToDownloadImageUrlList: failedImageList}, nil
 }
 
 type DefaultMarkdownImageHandler struct {
