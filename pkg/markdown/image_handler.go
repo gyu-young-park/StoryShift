@@ -57,16 +57,16 @@ type replacedImageType struct {
 	Name string
 }
 
-func (m *MarkdownImageHandler) DownloadImageWithUrl(fh *file.FileHandler, reqList []DownloadImageWithUrlReqModel) (DownloadImageWithUrlRespModel, error) {
+func (m *MarkdownImageHandler) DownloadImageWithUrl(fh *file.FileHandler, requests []DownloadImageWithUrlReqModel) (DownloadImageWithUrlRespModel, error) {
 	logger := log.GetLogger()
-	if len(reqList) == 0 {
+	if len(requests) == 0 {
 		return DownloadImageWithUrlRespModel{}, fmt.Errorf("there is no req")
 	}
 
 	failedImageList := []string{}
 	files := []file.File{}
 
-	for _, req := range reqList {
+	for _, req := range requests {
 		resp, err := httpclient.Get(httpclient.GetRequestParam{
 			URL: req.Url,
 		})
