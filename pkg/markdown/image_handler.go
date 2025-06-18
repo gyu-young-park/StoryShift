@@ -52,11 +52,6 @@ func (m *MarkdownImageHandler) ReplaceAllImageUrlOfContensWithPrefix(imageNamePr
 	})
 }
 
-type replacedImageType struct {
-	Url  string
-	Name string
-}
-
 func (m *MarkdownImageHandler) DownloadImageWithUrl(fh *file.FileHandler, requests []DownloadImageWithUrlReqModel) (DownloadImageWithUrlRespModel, error) {
 	logger := log.GetLogger()
 	if len(requests) == 0 {
