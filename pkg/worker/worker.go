@@ -60,10 +60,12 @@ func (w *WorkerManager[P, R]) initialize() {
 }
 
 func (w *WorkerManager[P, R]) Close() error {
-	w.once.Do(func() {
+	if w.pool.taskQueue != nil {
 		close(w.pool.taskQueue)
+	}
+	if w.resultQueue != nil {
 		close(w.resultQueue)
-	})
+	}
 	return nil
 }
 
@@ -100,4 +102,11 @@ func (w *WorkerManager[P, R]) Aggregate(cancel context.CancelFunc, paramList []P
 	}
 
 	return ret
+}
+
+func (w *WorkerManager[P, R]) Reload(ctx context.Context) {
+	w.ctx = ctx
+	w.pool.taskQueue = make(chan Task[P, R], w.pool.maxWorker)
+	w.resultQueue = make(chan R, w.pool.maxWorker)
+	w.initialize()
 }
