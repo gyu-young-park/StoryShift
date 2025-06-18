@@ -11,6 +11,7 @@ import (
 type WorkerManagable[P any, R any] interface {
 	Close() error
 	Submit(task Task[P, R])
+	GetResultChan() <-chan R
 }
 
 type workerPool[P any, R any] struct {
@@ -81,13 +82,14 @@ func (w *WorkerManager[P, R]) Submit(task Task[P, R]) {
 	}()
 }
 
+// TODO: Split Aggregation function to AggregateDecoreator struct
 func (w *WorkerManager[P, R]) AggregateAndClose(paramList []P, taskFunc TaskFn[P, R]) []R {
 	return w.aggregateAndClose(paramList, taskFunc)
 }
 
-func (w *WorkerManager[P, R]) Aggregate(ctx context.Context, paramList []P, taskFunc TaskFn[P, R]) []R {
+func (w *WorkerManager[P, R]) Aggregate(paramList []P, taskFunc TaskFn[P, R]) []R {
 	ret := w.aggregateAndClose(paramList, taskFunc)
-	w.setting(ctx, w.Name, w.pool.maxWorker)
+	w.setting(w.ctx, w.Name, w.pool.maxWorker)
 	return ret
 }
 

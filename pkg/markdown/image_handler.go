@@ -69,7 +69,7 @@ func (m *MarkdownImageHandler) DownloadImageWithUrl(fh *file.FileHandler, reques
 	defer workerManager.Close()
 	defer cancel()
 
-	imageFileList := workerManager.Aggregate(context.Background(), requests, func(req DownloadImageWithUrlReqModel) file.File {
+	imageFileList := workerManager.Aggregate(requests, func(req DownloadImageWithUrlReqModel) file.File {
 		resp, err := httpclient.Get(httpclient.GetRequestParam{
 			URL: req.Url,
 		})

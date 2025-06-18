@@ -193,32 +193,31 @@ func (v *VelogService) FetchAllSeriesZip(username string, isRefresh bool) (close
 	defer cancel()
 	defer workerManager.Close()
 
-	zfhList := workerManager.Aggregate(context.Background(), seriesItemList,
-		func(vsi velog.VelogSeriesItem) *os.File {
-			fileList, err := v.fetchSeries(fileHandler, username, vsi.URLSlug, isRefresh)
-			if err != nil {
-				logger.Errorf("failed to fetch sereis: %v", err.Error())
-				return nil
-			}
+	zfhList := workerManager.Aggregate(seriesItemList, func(vsi velog.VelogSeriesItem) *os.File {
+		fileList, err := v.fetchSeries(fileHandler, username, vsi.URLSlug, isRefresh)
+		if err != nil {
+			logger.Errorf("failed to fetch sereis: %v", err.Error())
+			return nil
+		}
 
-			zipFileName, err := fileHandler.CreateZipFile(file.ZipFile{
-				FileMeta: file.FileMeta{
-					Name:      vsi.URLSlug,
-					Extention: "zip",
-				},
-				Files: fileList,
-			})
-
-			if err != nil {
-				logger.Errorf("failed to create sereis zip file: %v", err.Error())
-				return nil
-			}
-
-			zipFh := fileHandler.GetFileWithLocked(zipFileName)
-			zipFh.Seek(0, 0)
-
-			return zipFh
+		zipFileName, err := fileHandler.CreateZipFile(file.ZipFile{
+			FileMeta: file.FileMeta{
+				Name:      vsi.URLSlug,
+				Extention: "zip",
+			},
+			Files: fileList,
 		})
+
+		if err != nil {
+			logger.Errorf("failed to create sereis zip file: %v", err.Error())
+			return nil
+		}
+
+		zipFh := fileHandler.GetFileWithLocked(zipFileName)
+		zipFh.Seek(0, 0)
+
+		return zipFh
+	})
 
 	zipfileList := []*os.File{}
 	for _, zfh := range zfhList {

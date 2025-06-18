@@ -118,41 +118,40 @@ func (v *VelogService) FetchAllVelogPostsZip(username string, isRefresh bool, do
 	defer cancel()
 
 	posts := v.getAllPosts(username, isRefresh)
-	fileNameList := workerManager.Aggregate(context.Background(), posts,
-		func(postItem velog.VelogPostsItem) string {
-			post, err := v.velogAPI.Post(username, postItem.UrlSlug)
-			if err != nil {
-				logger.Errorf("failed to get post %s, err: %s", post.Title, err.Error())
-				return ""
-			}
+	fileNameList := workerManager.Aggregate(posts, func(postItem velog.VelogPostsItem) string {
+		post, err := v.velogAPI.Post(username, postItem.UrlSlug)
+		if err != nil {
+			logger.Errorf("failed to get post %s, err: %s", post.Title, err.Error())
+			return ""
+		}
 
-			sanitizedFile, isSanitized := sanitizeBasePathSpecialCase(post.Title)
-			if isSanitized {
-				logger.Debugf("sanitized file [%s] to [%s]", post.Title, sanitizedFile)
-				err := fileHandler.AppendDataToJsonFile(renamedFilename, RenamedFileJSON{Origin: post.Title, Rename: sanitizedFile})
-				if err != nil {
-					logger.Error(err.Error())
-				}
-			}
-
-			content := post.Body
-			if downloadImageFlag {
-				content = imageManipulator.Replace(sanitizedFile, post.Body)
-			}
-
-			f, err := fileHandler.CreateFile(file.File{
-				FileMeta: file.FileMeta{
-					Name:      sanitizedFile,
-					Extention: "md",
-				},
-				Content: content,
-			})
-
+		sanitizedFile, isSanitized := sanitizeBasePathSpecialCase(post.Title)
+		if isSanitized {
+			logger.Debugf("sanitized file [%s] to [%s]", post.Title, sanitizedFile)
+			err := fileHandler.AppendDataToJsonFile(renamedFilename, RenamedFileJSON{Origin: post.Title, Rename: sanitizedFile})
 			if err != nil {
 				logger.Error(err.Error())
 			}
-			return f
+		}
+
+		content := post.Body
+		if downloadImageFlag {
+			content = imageManipulator.Replace(sanitizedFile, post.Body)
+		}
+
+		f, err := fileHandler.CreateFile(file.File{
+			FileMeta: file.FileMeta{
+				Name:      sanitizedFile,
+				Extention: "md",
+			},
+			Content: content,
 		})
+
+		if err != nil {
+			logger.Error(err.Error())
+		}
+		return f
+	})
 
 	if downloadImageFlag {
 		imageZipFile, err := imageManipulator.DownloadAsZip(username)
