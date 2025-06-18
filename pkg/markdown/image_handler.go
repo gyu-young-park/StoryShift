@@ -67,8 +67,9 @@ func (m *MarkdownImageHandler) DownloadImageWithUrl(fh *file.FileHandler, reques
 	ctx, cancel := context.WithCancel(context.Background())
 	workerManager := worker.NewWorkerManager[DownloadImageWithUrlReqModel, file.File](ctx, "markdown-image-downloader", 50)
 	defer workerManager.Close()
+	defer cancel()
 
-	imageFileList := workerManager.Aggregate(cancel, requests, func(req DownloadImageWithUrlReqModel) file.File {
+	imageFileList := workerManager.Aggregate(context.Background(), requests, func(req DownloadImageWithUrlReqModel) file.File {
 		resp, err := httpclient.Get(httpclient.GetRequestParam{
 			URL: req.Url,
 		})

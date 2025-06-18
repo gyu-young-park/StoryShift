@@ -27,18 +27,20 @@ type WorkerManager[P any, R any] struct {
 }
 
 func NewWorkerManager[P any, R any](ctx context.Context, name string, maxWorker int) *WorkerManager[P, R] {
-	wg := &WorkerManager[P, R]{
-		Name: name,
-		once: sync.Once{},
-		pool: workerPool[P, R]{
-			maxWorker: maxWorker,
-			taskQueue: make(chan Task[P, R], maxWorker),
-		},
-		resultQueue: make(chan R, maxWorker),
-		ctx:         ctx,
-	}
-	wg.initialize()
+	wg := &WorkerManager[P, R]{}
+	wg.setting(ctx, name, maxWorker)
 	return wg
+}
+func (w *WorkerManager[P, R]) setting(ctx context.Context, name string, maxWorker int) {
+	w.ctx = ctx
+	w.Name = name
+	w.once = sync.Once{}
+	w.pool = workerPool[P, R]{
+		maxWorker: maxWorker,
+		taskQueue: make(chan Task[P, R], maxWorker),
+	}
+	w.resultQueue = make(chan R, maxWorker)
+	w.initialize()
 }
 
 func (w *WorkerManager[P, R]) initialize() {
@@ -47,11 +49,13 @@ func (w *WorkerManager[P, R]) initialize() {
 			logger := log.GetLogger()
 			for {
 				select {
-				case task := <-w.pool.taskQueue:
+				case task, ok := <-w.pool.taskQueue:
+					if !ok {
+						return
+					}
 					logger.Debugf("getting task: %s in %s", task.Name, workerName)
 					w.resultQueue <- task.Fn(task.Param)
 				case <-w.ctx.Done():
-					w.Close()
 					return
 				}
 			}
@@ -60,12 +64,10 @@ func (w *WorkerManager[P, R]) initialize() {
 }
 
 func (w *WorkerManager[P, R]) Close() error {
-	if w.pool.taskQueue != nil {
+	w.once.Do(func() {
 		close(w.pool.taskQueue)
-	}
-	if w.resultQueue != nil {
 		close(w.resultQueue)
-	}
+	})
 	return nil
 }
 
@@ -79,7 +81,17 @@ func (w *WorkerManager[P, R]) Submit(task Task[P, R]) {
 	}()
 }
 
-func (w *WorkerManager[P, R]) Aggregate(cancel context.CancelFunc, paramList []P, taskFunc TaskFn[P, R]) []R {
+func (w *WorkerManager[P, R]) AggregateAndClose(paramList []P, taskFunc TaskFn[P, R]) []R {
+	return w.aggregateAndClose(paramList, taskFunc)
+}
+
+func (w *WorkerManager[P, R]) Aggregate(ctx context.Context, paramList []P, taskFunc TaskFn[P, R]) []R {
+	ret := w.aggregateAndClose(paramList, taskFunc)
+	w.setting(ctx, w.Name, w.pool.maxWorker)
+	return ret
+}
+
+func (w *WorkerManager[P, R]) aggregateAndClose(paramList []P, taskFunc TaskFn[P, R]) []R {
 	var wg sync.WaitGroup
 	for i, param := range paramList {
 		wg.Add(1)
@@ -92,7 +104,7 @@ func (w *WorkerManager[P, R]) Aggregate(cancel context.CancelFunc, paramList []P
 
 	go func() {
 		wg.Wait()
-		defer cancel()
+		w.Close()
 	}()
 
 	ret := []R{}
@@ -102,11 +114,4 @@ func (w *WorkerManager[P, R]) Aggregate(cancel context.CancelFunc, paramList []P
 	}
 
 	return ret
-}
-
-func (w *WorkerManager[P, R]) Reload(ctx context.Context) {
-	w.ctx = ctx
-	w.pool.taskQueue = make(chan Task[P, R], w.pool.maxWorker)
-	w.resultQueue = make(chan R, w.pool.maxWorker)
-	w.initialize()
 }

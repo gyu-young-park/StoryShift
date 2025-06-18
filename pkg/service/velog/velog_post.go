@@ -115,9 +115,10 @@ func (v *VelogService) FetchAllVelogPostsZip(username string, isRefresh bool, do
 	ctx, cancel := context.WithCancel(context.Background())
 	workerManager := worker.NewWorkerManager[velog.VelogPostsItem, string](ctx, fmt.Sprintf("%s-%s", "velog-post-zip", username), 5)
 	defer workerManager.Close()
+	defer cancel()
 
 	posts := v.getAllPosts(username, isRefresh)
-	fileNameList := workerManager.Aggregate(cancel, posts,
+	fileNameList := workerManager.Aggregate(context.Background(), posts,
 		func(postItem velog.VelogPostsItem) string {
 			post, err := v.velogAPI.Post(username, postItem.UrlSlug)
 			if err != nil {

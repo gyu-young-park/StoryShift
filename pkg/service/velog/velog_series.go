@@ -190,9 +190,10 @@ func (v *VelogService) FetchAllSeriesZip(username string, isRefresh bool) (close
 
 	ctx, cancel := context.WithCancel(context.Background())
 	workerManager := worker.NewWorkerManager[velog.VelogSeriesItem, *os.File](ctx, fmt.Sprintf("%s-%s", "velog-series-zip", username), 5)
+	defer cancel()
 	defer workerManager.Close()
 
-	zfhList := workerManager.Aggregate(cancel, seriesItemList,
+	zfhList := workerManager.Aggregate(context.Background(), seriesItemList,
 		func(vsi velog.VelogSeriesItem) *os.File {
 			fileList, err := v.fetchSeries(fileHandler, username, vsi.URLSlug, isRefresh)
 			if err != nil {
