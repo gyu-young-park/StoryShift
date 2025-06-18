@@ -17,32 +17,35 @@ const (
 )
 
 type MarkdownImageManipulator struct {
-	lock               *sync.Mutex
-	handler            MarkdownImageHandlable
-	imageNameAndURLMap map[string]string
-	fileHandler        *file.FileHandler
+	lock                             *sync.Mutex
+	handler                          MarkdownImageHandlable
+	downloadImageWithUrlReqModelList []DownloadImageWithUrlReqModel
+	fileHandler                      *file.FileHandler
 }
 
 func NewMarkdownImageManipulator(handler MarkdownImageHandlable) *MarkdownImageManipulator {
 	return &MarkdownImageManipulator{
-		lock:               &sync.Mutex{},
-		handler:            handler,
-		imageNameAndURLMap: make(map[string]string),
-		fileHandler:        file.NewFileHandler(),
+		lock:                             &sync.Mutex{},
+		handler:                          handler,
+		downloadImageWithUrlReqModelList: []DownloadImageWithUrlReqModel{},
+		fileHandler:                      file.NewFileHandler(),
 	}
 }
 
 func (m *MarkdownImageManipulator) Replace(title string, contents string) string {
 	m.lock.Lock()
 	defer m.lock.Unlock()
-	imageTagList := m.handler.GetImageList(contents)
-	if len(imageTagList) == 0 {
+	imageUrlList := m.handler.GetImageList(contents)
+	if len(imageUrlList) == 0 {
 		return contents
 	}
 
 	encodedTitle := base64.RawURLEncoding.EncodeToString([]byte(title))
-	for i, image := range imageTagList {
-		m.imageNameAndURLMap[fmt.Sprintf("%s-%v", encodedTitle, i)] = image
+	for i, image := range imageUrlList {
+		m.downloadImageWithUrlReqModelList = append(m.downloadImageWithUrlReqModelList, DownloadImageWithUrlReqModel{
+			Url:           image,
+			ImageFileName: fmt.Sprintf("%s-%v", encodedTitle, i),
+		})
 	}
 
 	return m.handler.ReplaceAllImageUrlOfContensWithPrefix(fmt.Sprintf("%s/%s", IMAGE_DIR_KEY, encodedTitle), contents)
@@ -54,7 +57,7 @@ func (m *MarkdownImageManipulator) DownloadAsZip(username string) (*os.File, err
 	logger := log.GetLogger()
 
 	imageFileList := []*os.File{}
-	downloadImageWithUrlRespModel, err := m.handler.DownloadImageWithUrl(m.fileHandler, m.imageNameAndURLMap)
+	downloadImageWithUrlRespModel, err := m.handler.DownloadImageWithUrl(m.fileHandler, m.downloadImageWithUrlReqModelList)
 	if err != nil {
 		logger.Errorf("failed to download %s", err.Error())
 		return nil, err
@@ -102,7 +105,7 @@ func (m *MarkdownImageManipulator) DownloadAsZip(username string) (*os.File, err
 }
 
 func (m *MarkdownImageManipulator) Done() {
-	m.imageNameAndURLMap = map[string]string{}
+	m.downloadImageWithUrlReqModelList = []DownloadImageWithUrlReqModel{}
 	m.fileHandler.Close()
 	m.fileHandler = nil
 }

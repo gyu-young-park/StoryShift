@@ -13,7 +13,7 @@ import (
 type MarkdownImageHandlable interface {
 	GetImageList(contents string) []string
 	ReplaceAllImageUrlOfContensWithPrefix(imageNamePrefix string, contents string) string
-	DownloadImageWithUrl(fh *file.FileHandler, imageUrls map[string]string) (DownloadImageWithUrlRespModel, error)
+	DownloadImageWithUrl(fh *file.FileHandler, imageUrls []DownloadImageWithUrlReqModel) (DownloadImageWithUrlRespModel, error)
 }
 
 type MarkdownImageHandler struct {
@@ -52,26 +52,32 @@ func (m *MarkdownImageHandler) ReplaceAllImageUrlOfContensWithPrefix(imageNamePr
 	})
 }
 
-func (m *MarkdownImageHandler) DownloadImageWithUrl(fh *file.FileHandler, imageUrls map[string]string) (DownloadImageWithUrlRespModel, error) {
+type replacedImageType struct {
+	Url  string
+	Name string
+}
+
+func (m *MarkdownImageHandler) DownloadImageWithUrl(fh *file.FileHandler, reqList []DownloadImageWithUrlReqModel) (DownloadImageWithUrlRespModel, error) {
 	logger := log.GetLogger()
-	if imageUrls == nil {
-		return DownloadImageWithUrlRespModel{}, fmt.Errorf("there is no imageUrls map")
+	if len(reqList) == 0 {
+		return DownloadImageWithUrlRespModel{}, fmt.Errorf("there is no req")
 	}
 
 	failedImageList := []string{}
 	files := []file.File{}
-	for replaceName, imageUrl := range imageUrls {
+
+	for _, req := range reqList {
 		resp, err := httpclient.Get(httpclient.GetRequestParam{
-			URL: imageUrl,
+			URL: req.Url,
 		})
 		if err != nil {
-			failedImageList = append(failedImageList, imageUrl)
+			failedImageList = append(failedImageList, req.Url)
 		}
 
-		_, ext := file.SplitFilenameWithNameAndExt(imageUrl)
+		_, ext := file.SplitFilenameWithNameAndExt(req.Url)
 		files = append(files, file.File{
 			FileMeta: file.FileMeta{
-				Name:      replaceName,
+				Name:      req.ImageFileName,
 				Extention: ext,
 			},
 			Content: string(resp.Body),
