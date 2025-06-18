@@ -1,13 +1,16 @@
 package markdown
 
 import (
+	"context"
 	"fmt"
 	"path/filepath"
 	"regexp"
+	"sync"
 
 	"github.com/gyu-young-park/StoryShift/internal/httpclient"
 	"github.com/gyu-young-park/StoryShift/pkg/file"
 	"github.com/gyu-young-park/StoryShift/pkg/log"
+	"github.com/gyu-young-park/StoryShift/pkg/worker"
 )
 
 type MarkdownImageHandlable interface {
@@ -58,38 +61,56 @@ func (m *MarkdownImageHandler) DownloadImageWithUrl(fh *file.FileHandler, reques
 		return DownloadImageWithUrlRespModel{}, fmt.Errorf("there is no req")
 	}
 
+	mu := sync.Mutex{}
 	failedImageList := []string{}
-	files := []file.File{}
 
-	for _, req := range requests {
+	ctx, cancel := context.WithCancel(context.Background())
+	workerManager := worker.NewWorkerManager[DownloadImageWithUrlReqModel, file.File](ctx, "markdown-image-downloader", 50)
+	defer workerManager.Close()
+
+	imageFileList := workerManager.Aggregate(cancel, requests, func(req DownloadImageWithUrlReqModel) file.File {
 		resp, err := httpclient.Get(httpclient.GetRequestParam{
 			URL: req.Url,
 		})
 		if err != nil {
+			mu.Lock()
+			defer mu.Unlock()
 			failedImageList = append(failedImageList, req.Url)
+			return file.File{
+				FileMeta: file.FileMeta{
+					Name:      "failed",
+					Extention: ".fail",
+				},
+			}
 		}
 
 		_, ext := file.SplitFilenameWithNameAndExt(req.Url)
-		files = append(files, file.File{
+		return file.File{
 			FileMeta: file.FileMeta{
 				Name:      req.ImageFileName,
 				Extention: ext,
 			},
 			Content: string(resp.Body),
-		})
-	}
+		}
+	})
 
-	imageFileList := []string{}
-	for _, file := range files {
+	imageFilePathList := []string{}
+	for _, file := range imageFileList {
+		if file.Name == "failed" {
+			continue
+		}
+
 		imageFilePath, err := fh.CreateFile(file)
 		if err != nil {
 			return DownloadImageWithUrlRespModel{}, fmt.Errorf("failed to create image file: %s", file.GetFilename())
 		}
-		imageFileList = append(imageFileList, imageFilePath)
+		imageFilePathList = append(imageFilePathList, imageFilePath)
 		logger.Infof("image file created: %s", imageFilePath)
 	}
 
-	return DownloadImageWithUrlRespModel{ImageFilePathList: imageFileList, FailedToDownloadImageUrlList: failedImageList}, nil
+	return DownloadImageWithUrlRespModel{
+		ImageFilePathList:            imageFilePathList,
+		FailedToDownloadImageUrlList: failedImageList}, nil
 }
 
 type DefaultMarkdownImageHandler struct {
