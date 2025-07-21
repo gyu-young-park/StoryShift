@@ -1,15 +1,18 @@
 #!/bin/bash
 
 CONTAINER_RUNTIME=docker
-VERSION=9
+TAG=9
 PASSWORD=hello
 PORT=3306
+COMMAND=start # restart, delete, start
+CONTAINER_NAME=mysql
 
 function get_parameter() {
-    while getopts "i:p:" opt "$@"; do
+    while getopts "i:p:c:" opt "$@"; do
         case "$opt" in
-            v) VERSION="$OPTARG" ;;
+            v) TAG="$OPTARG" ;;
             p) PASSWORD="$OPTARG" ;;
+            c) COMMAND="$OPTARG" ;;
             *) echo "Usage: "; exit 1 ;;
         esac
     done
@@ -43,13 +46,41 @@ function run_mysql_container() {
     image=$1
     password=$2
     port=$3
-    $CONTAINER_RUNTIME run --name mysql -e MYSQL_ROOT_PASSWORD=${password} -d -p ${port}:${port} ${image}
+    echo "CMD: $CONTAINER_RUNTIME run --name ${CONTAINER_NAME} -e MYSQL_ROOT_PASSWORD=${password} -d -p ${port}:${port} ${image}"
+    $CONTAINER_RUNTIME run --name ${CONTAINER_NAME} -e MYSQL_ROOT_PASSWORD=${password} -d -p ${port}:${port} ${image}
 }
 
-function main() {
-    get_parameter "$@"
+function run_command() {
+    image=$1
+    if [[ "${COMMAND}" == "restart" ]]; then
+        echo "---------restart-------------"
+        run_restart "${image}"
+    elif [[ "${COMMAND}" == "delete" ]]; then
+        echo "---------delete-------------"
+        run_delete "${image}"
+    else
+        echo "---------start-------------"
+        run_start "${image}"
+    fi
+}
 
-    image="mysql:${VERSION}"
+function run_restart() {
+    image=$1
+    run_delete "${image}" 
+    run_start "${image}"
+}
+
+function run_delete() {
+    image=$1
+    if $(check_is_container_run ${image}); then
+        $CONTAINER_RUNTIME rm -f ${CONTAINER_NAME}
+    else
+        echo "mysql container is not running"
+    fi
+}
+
+function run_start() {
+    image=$1
     if $(check_is_image_exist); then
         echo "Already image is exists in local repo"
     else
@@ -61,6 +92,12 @@ function main() {
     else
         run_mysql_container "${image}" "${PASSWORD}" "${PORT}"
     fi
+}
+
+function main() {
+    get_parameter "$@"
+    image="mysql:${TAG}"
+    run_command ${image}
 }
 
 main "$@"
