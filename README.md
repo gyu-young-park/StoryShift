@@ -24,7 +24,13 @@ Even when switching blog platforms, you can preserve your content in clean, read
 ## 🔧 Usage
 1. Start a server by script
 ```bash
-./script/start.sh
+./script/start.sh -c web
+```
+
+or you can use cli version
+
+```bash
+./script/start.sh -c cli
 ```
 
 2. Start a server by go
